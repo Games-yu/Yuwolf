@@ -348,6 +348,47 @@ select:focus-visible {
 .phase-timer.is-ending strong {
   color: #ff8c95;
 }
+.private-result {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: #03050bbd;
+  backdrop-filter: blur(9px);
+}
+.private-result-card {
+  width: min(430px, 100%);
+  padding: 32px;
+  text-align: center;
+  border: 1px solid #e5bd687a;
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 0, #283960, #111522 68%);
+  box-shadow: 0 28px 100px #000b;
+}
+.private-result-icon {
+  font-size: 56px;
+}
+.private-result-card h2 {
+  margin: 10px 0;
+  font:
+    700 28px Cinzel,
+    serif;
+}
+.private-result-card p {
+  margin: 0;
+  color: #f3f4f8;
+  line-height: 1.6;
+}
+.private-result-card small {
+  display: block;
+  margin: 18px 0;
+  color: var(--muted);
+}
+.private-result-card .button {
+  min-width: 170px;
+}
 .chat {
   display: flex;
   flex-direction: column;
@@ -625,7 +666,119 @@ select:focus-visible {
     grid-template-columns: 1fr;
     width: 100%;
   }
-  .lobby-actions #start {
-    grid-column: auto;
   }
+.lobby-actions #start {
+  grid-column: auto;
 }
+}
+
+/* Private Result Modal (Seerin & private notifications) */
+.private-result {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(4, 6, 12, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: fadeInModal 0.25s ease-out;
+}
+.private-result-card {
+  width: min(92vw, 440px);
+  background: linear-gradient(145deg, #1d2133, #0f121e);
+  border: 2px solid var(--gold);
+  border-radius: 20px;
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 30px rgba(229, 189, 104, 0.25);
+  animation: scaleUpModal 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.private-result-icon {
+  font-size: 64px;
+  line-height: 1;
+  margin-bottom: 12px;
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.5));
+}
+.private-result-card h2 {
+  font: 700 24px Cinzel, serif;
+  color: var(--gold);
+  margin: 0 0 12px;
+}
+.private-result-card p {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #f1ebd9;
+  margin: 0 0 16px;
+}
+.private-result-card small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+.private-result-card .button {
+  width: 100%;
+}
+.private-result-card.is-wolf {
+  border-color: #e54d4d;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85), 0 0 35px rgba(229, 77, 77, 0.35);
+}
+.private-result-card.is-wolf h2 {
+  color: #ff6b6b;
+}
+
+@keyframes fadeInModal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scaleUpModal {
+  from { opacity: 0; transform: scale(0.85) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Werewolf Vote tags (Among Us style) */
+.wolf-voters-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.wolf-voter-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(229, 77, 77, 0.25);
+  color: #ff9e9e;
+  border: 1px solid rgba(229, 77, 77, 0.4);
+}
+
+/* Preset player count buttons */
+.max-player-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.max-opt-btn {
+  padding: 10px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  background: #090b13;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+.max-opt-btn.active,
+.max-opt-btn:hover {
+  border-color: var(--gold);
+  color: #fff;
+  background: #191f33;
+}
+

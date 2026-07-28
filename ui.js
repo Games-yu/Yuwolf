@@ -131,6 +131,31 @@ function enhanceYuWolfUi() {
   const roleConfig = document.querySelector('.roles');
   if (roleConfig) roleConfig.style.display = 'none';
 
+  const playerLimit = document.querySelector('#max');
+  if (playerLimit && !document.querySelector('#custom-max')) {
+    const customOption = document.createElement('option');
+    customOption.value = 'custom';
+    customOption.textContent = 'Eigene Spielerzahl (5–99)';
+    playerLimit.appendChild(customOption);
+    const customMax = document.createElement('input');
+    customMax.id = 'custom-max';
+    customMax.className = 'input';
+    customMax.type = 'number';
+    customMax.min = '5';
+    customMax.max = '99';
+    customMax.value = '20';
+    customMax.disabled = true;
+    customMax.inputMode = 'numeric';
+    customMax.placeholder = 'Spielerzahl von 5 bis 99';
+    customMax.setAttribute('aria-label', 'Eigene maximale Spielerzahl');
+    playerLimit.insertAdjacentElement('afterend', customMax);
+    playerLimit.addEventListener('change', () => {
+      const isCustom = playerLimit.value === 'custom';
+      customMax.disabled = !isCustom;
+      if (isCustom) customMax.focus();
+    });
+  }
+
   if (joinMatch && !state && !document.querySelector('#invite-notice')) {
     const joinCode = document.querySelector('#join-code');
     const joinName = document.querySelector('#join-name');

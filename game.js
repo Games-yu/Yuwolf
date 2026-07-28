@@ -27,7 +27,17 @@ function button(text, cls = 'button', id = '') {
 function landing(lobbies = []) {
   state = null;
   clearPhaseTimerDisplay();
-  app.innerHTML = `<section class="hero"><div class="eyebrow">Echtzeit-Mehrspieler · 5–16 Personen</div><h1>Die Nacht kennt<br>deinen Namen.</h1><p>Erstelle ein Dorf, teile einen Lobby-Code oder finde eine öffentliche Runde. Alle geheimen Rollen bleiben auf dem Server verborgen.</p></section><section class="landing-grid"><article class="panel"><h2 class="section-title">Eine Lobby eröffnen</h2><p class="muted">Du bist Spielleitung und bestimmst die Rollen.</p><div class="form"><input id="create-name" class="input" placeholder="Dein Spielername" maxlength="22"><input id="lobby-name" class="input" placeholder="Name der Lobby, z. B. Vollmond" maxlength="30"><select id="max"><option value="8">Bis 8 Personen</option><option value="12" selected>Bis 12 Personen</option><option value="16">Bis 16 Personen</option></select><label class="check"><input id="private" type="checkbox"> Private Lobby mit Passwort</label><input id="password" class="input" placeholder="Passwort (nur private Lobby)" maxlength="32" disabled><div class="roles"><label class="check"><input type="checkbox" value="seer" checked> 🔮 Seherin</label><label class="check"><input type="checkbox" value="witch" checked> ⚗️ Hexe</label><label class="check"><input type="checkbox" value="hunter" checked> 🏹 Jäger</label><label class="check"><input type="checkbox" value="cupid" checked> 💘 Amor</label></div>${button('Lobby erstellen', 'button', 'create')}</div></article><article class="panel"><h2 class="section-title">Öffentliche Dörfer</h2><p class="muted">Oder trete mit einem Lobby-Code bei.</p><div class="form"><input id="join-name" class="input" placeholder="Dein Spielername" maxlength="22"><input id="join-code" class="input" placeholder="Lobby-Code" maxlength="6"><input id="join-password" class="input" placeholder="Passwort, falls benötigt" maxlength="32">${button('Mit Code beitreten', 'button secondary', 'join')}</div><div id="public-list" class="players"></div></article></section>`;
+  app.innerHTML = `<section class="hero"><div class="eyebrow">Echtzeit-Mehrspieler · 5–99 Personen</div><h1>Die Nacht kennt<br>deinen Namen.</h1><p>Erstelle ein Dorf, teile einen Lobby-Code oder finde eine öffentliche Runde. Alle geheimen Rollen bleiben auf dem Server verborgen.</p></section><section class="landing-grid"><article class="panel"><h2 class="section-title">Eine Lobby eröffnen</h2><p class="muted">Du bist Spielleitung und bestimmst die Rollen.</p><div class="form"><input id="create-name" class="input" placeholder="Dein Spielername" maxlength="22"><input id="lobby-name" class="input" placeholder="Name der Lobby, z. B. Vollmond" maxlength="30"><label class="eyebrow" style="margin-top: 4px; display: block;">Spieleranzahl</label><div class="max-player-options"><button type="button" class="max-opt-btn" data-val="8">8</button><button type="button" class="max-opt-btn active" data-val="12">12</button><button type="button" class="max-opt-btn" data-val="16">16</button><button type="button" class="max-opt-btn" data-val="custom">Custom</button></div><input id="max" type="hidden" value="12"><div id="custom-max-wrapper" style="display: none;"><input id="custom-max" type="number" class="input" placeholder="Spieleranzahl (5 - 99)" min="5" max="99" value="20"></div><label class="check"><input id="private" type="checkbox"> Private Lobby mit Passwort</label><input id="password" class="input" placeholder="Passwort (nur private Lobby)" maxlength="32" disabled><div class="roles"><label class="check"><input type="checkbox" value="seer" checked> 🔮 Seherin</label><label class="check"><input type="checkbox" value="witch" checked> ⚗️ Hexe</label><label class="check"><input type="checkbox" value="hunter" checked> 🏹 Jäger</label><label class="check"><input type="checkbox" value="cupid" checked> 💘 Amor</label></div>${button('Lobby erstellen', 'button', 'create')}</div></article><article class="panel"><h2 class="section-title">Öffentliche Dörfer</h2><p class="muted">Oder trete mit einem Lobby-Code bei.</p><div class="form"><input id="join-name" class="input" placeholder="Dein Spielername" maxlength="22"><input id="join-code" class="input" placeholder="Lobby-Code" maxlength="6"><input id="join-password" class="input" placeholder="Passwort, falls benötigt" maxlength="32">${button('Mit Code beitreten', 'button secondary', 'join')}</div><div id="public-list" class="players"></div></article></section>`;
+  document.querySelectorAll('.max-opt-btn').forEach((btn) => {
+    btn.onclick = () => {
+      document.querySelectorAll('.max-opt-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      const val = btn.dataset.val;
+      document.querySelector('#max').value = val;
+      const customWrapper = document.querySelector('#custom-max-wrapper');
+      if (customWrapper) customWrapper.style.display = val === 'custom' ? 'block' : 'none';
+    };
+  });
   document.querySelector('#private').onchange = (e) =>
     (document.querySelector('#password').disabled = !e.target.checked);
   document.querySelector('#create').onclick = () => {
@@ -35,15 +45,22 @@ function landing(lobbies = []) {
     const name = document.querySelector('#lobby-name').value.trim();
     const isPrivate = document.querySelector('#private').checked;
     const password = document.querySelector('#password').value;
+    const selectedLimit = document.querySelector('#max').value;
+    const maxPlayers =
+      selectedLimit === 'custom'
+        ? Number(document.querySelector('#custom-max')?.value)
+        : Number(selectedLimit);
     if (!playerName || !name) return toast('Bitte gib einen Spieler- und Lobby-Namen ein.');
     if (isPrivate && !password.trim()) return toast('Private Lobbys benötigen ein Passwort.');
+    if (!Number.isInteger(maxPlayers) || maxPlayers < 5 || maxPlayers > 99)
+      return toast('Wähle eine Spielerzahl zwischen 5 und 99.');
     if (lobbyRequestPending) return;
     lobbyRequestPending = true;
     document.querySelector('#create').disabled = true;
     socket.emit('lobby:create', {
       playerName,
       name,
-      maxPlayers: +document.querySelector('#max').value,
+      maxPlayers,
       private: isPrivate,
       password,
       roles: [...document.querySelectorAll('.roles input:checked')].map((x) => x.value),
@@ -148,9 +165,25 @@ function targetButtons(targets, type) {
   return `<div class="choice-grid">${targets
     .map((target) => {
       const isSelected =
-        type === 'love' ? cupidChoices.includes(target.id) : selected === target.id;
+        type === 'love'
+          ? cupidChoices.includes(target.id)
+          : type === 'act' && state.selection?.task === 'wolf'
+            ? state.selection.wolfMyTarget === target.id
+            : selected === target.id;
       const voteCount = type === 'vote' ? state.vote?.tally?.[target.id] || 0 : null;
-      return `<button class="choice ${isSelected ? 'selected' : ''}" data-target="${target.id}" data-type="${type}">${esc(target.name)}${voteCount !== null ? `<span class="vote-count">${voteCount}</span>` : ''}</button>`;
+      const wolfVoteCount =
+        type === 'act' && state.selection?.task === 'wolf'
+          ? state.selection.wolfVotes?.[target.id] || 0
+          : null;
+      const count = voteCount ?? wolfVoteCount;
+      const wolfVoters =
+        type === 'act' && state.selection?.task === 'wolf'
+          ? state.selection.wolfVoters?.[target.id] || []
+          : [];
+      const votersMarkup = wolfVoters.length
+        ? `<div class="wolf-voters-list">${wolfVoters.map((v) => `<span class="wolf-voter-tag">🐺 ${esc(v)}</span>`).join('')}</div>`
+        : '';
+      return `<button class="choice ${isSelected ? 'selected' : ''}" data-target="${target.id}" data-type="${type}"><div>${esc(target.name)}${count !== null ? `<span class="vote-count">${count}</span>` : ''}</div>${votersMarkup}</button>`;
     })
     .join('')}</div>`;
 }
@@ -296,4 +329,34 @@ socket.on('game:vision', (v) => {
   vision = v;
   render();
 });
+socket.on('game:privateResult', showPrivateResult);
+function showPrivateResult(result) {
+  document.querySelector('#private-result')?.remove();
+  const modal = document.createElement('section');
+  modal.id = 'private-result';
+  modal.className = 'private-result';
+  const card = document.createElement('div');
+  card.className = `private-result-card ${result?.theme || ''}`;
+  const icon = document.createElement('div');
+  icon.className = 'private-result-icon';
+  icon.textContent = result?.icon || '✦';
+  const title = document.createElement('h2');
+  title.textContent = result?.title || 'Geheime Information';
+  const text = document.createElement('p');
+  text.textContent = result?.text || '';
+  const hint = document.createElement('small');
+  hint.textContent = 'Dieses Wissen gehört nur dir.';
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'button';
+  close.textContent = 'Verstanden';
+  close.onclick = () => modal.remove();
+  card.append(icon, title, text, hint, close);
+  modal.append(card);
+  modal.onclick = (event) => {
+    if (event.target === modal) modal.remove();
+  };
+  document.body.append(modal);
+  close.focus();
+}
 landing();

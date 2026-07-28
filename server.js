@@ -239,7 +239,7 @@ function playerView(l, player) {
     messages: l.messages.slice(-80),
     log: l.log.slice(-12),
     own,
-    selection: l.selection,
+    selection: selectionView(l, player),
     timer: l.phaseDeadline ? { deadline: l.phaseDeadline, phase: l.phase } : null,
     winner: l.winner,
     settings: l.settings,
@@ -263,6 +263,35 @@ function playerView(l, player) {
           }
         : null,
   };
+}
+function selectionView(l, player) {
+  const selection = l.selection;
+  if (!selection) return null;
+  const isActor = selection.actorIds?.includes(player?.id);
+  if (!isActor) {
+    return l.phase === 'night'
+      ? { task: 'waiting', actorIds: [], targets: [], text: 'Die Nacht ist still. Warte ab.' }
+      : selection;
+  }
+  const view = { ...selection };
+  if (selection.task === 'wolf') {
+    const votes = l.nightData?.wolfVotes || new Map();
+    const tally = new Map();
+    const votersMap = new Map();
+    for (const [voterId, targetId] of votes.entries()) {
+      tally.set(targetId, (tally.get(targetId) || 0) + 1);
+      const voterPlayer = find(l, voterId);
+      if (voterPlayer) {
+        if (!votersMap.has(targetId)) votersMap.set(targetId, []);
+        votersMap.get(targetId).push(voterPlayer.name);
+      }
+    }
+    view.wolfVotes = Object.fromEntries(tally);
+    view.wolfVoters = Object.fromEntries(votersMap);
+    view.wolfVoteCast = votes.has(player.id);
+    view.wolfMyTarget = votes.get(player.id) || null;
+  }
+  return view;
 }
 function broadcast(l) {
   l.players.forEach((p) => io.to(p.id).emit('lobby:state', playerView(l, p)));
@@ -294,6 +323,7 @@ function phaseDuration(phase) {
 function handlePhaseTimeout(l, phase) {
   if (!lobbies.has(l.code) || l.phase !== phase) return;
   if (phase === 'night') {
+    if (l.selection?.task === 'wolf') return resolveWolfVotes(l);
     system(l, 'Die Nachtzeit ist abgelaufen. Die nächste Rolle erwacht.');
     l.taskIndex++;
     return nextTask(l);
@@ -375,6 +405,7 @@ function nextTask(l) {
     return nextTask(l);
   }
   const actorIds = actors.map((p) => p.id);
+  if (task === 'wolf') l.nightData.wolfVotes = new Map();
   let text = {
     wolf: 'Die Werwölfe wählen gemeinsam ein Opfer.',
     seer: 'Die Seherin darf eine Rolle prüfen.',
@@ -395,6 +426,21 @@ function nextTask(l) {
     text,
     targets: targets.map((p) => ({ id: p.id, name: p.name })),
   });
+}
+function resolveWolfVotes(l) {
+  const votes = l.nightData.wolfVotes || new Map();
+  const tally = new Map();
+  for (const target of votes.values()) tally.set(target, (tally.get(target) || 0) + 1);
+  const highest = Math.max(0, ...tally.values());
+  const candidates = [...tally.entries()]
+    .filter(([, count]) => count === highest)
+    .map(([target]) => target);
+  if (candidates.length) {
+    l.nightData.wolfTarget = shuffle(candidates)[0];
+    system(l, 'Das Rudel hat sein Opfer gewählt.');
+  } else system(l, 'Das Rudel hat in dieser Nacht kein Opfer gewählt.');
+  l.taskIndex++;
+  nextTask(l);
 }
 function kill(l, id, reason) {
   const p = find(l, id);
@@ -540,12 +586,12 @@ io.on('connection', (socket) => {
     if (data.private && !String(data.password || '').trim())
       return error(socket, 'Private Lobbys benötigen ein Passwort.');
     const lobbyCode = code();
-    const requestedMax = Number(data?.maxPlayers);
+    const requestedMax = Number.parseInt(data?.maxPlayers, 10);
     const l = {
       code: lobbyCode,
       name,
       hostId: socket.id,
-      maxPlayers: [5, 8, 12, 16].includes(requestedMax) ? requestedMax : 12,
+      maxPlayers: Number.isInteger(requestedMax) ? Math.min(99, Math.max(5, requestedMax)) : 12,
       private: !!data.private,
       passwordHash:
         data.private && data.password
@@ -707,13 +753,31 @@ io.on('connection', (socket) => {
       return error(socket, 'Du bist gerade nicht an der Reihe.');
     if (!s.targets?.some((t) => t.id === target)) return error(socket, 'Ungültiges Ziel.');
     if (s.task === 'wolf') {
-      l.nightData.wolfTarget = target;
-      l.taskIndex++;
-      return nextTask(l);
+      l.nightData.wolfVotes ??= new Map();
+      l.nightData.wolfVotes.set(socket.id, target);
+      const requiredWolves = alive(l).filter(
+        (player) => player.role === 'wolf' && player.connected,
+      );
+      if (requiredWolves.every((wolf) => l.nightData.wolfVotes.has(wolf.id)))
+        return resolveWolfVotes(l);
+      return broadcast(l);
     }
     if (s.task === 'seer') {
       const t = find(l, target);
-      socket.emit('game:vision', { name: t.name, role: roleInfo[t.role] });
+      if (!t) return error(socket, 'Ungültiges Ziel.');
+      const isWolf = t.role === 'wolf';
+      const roleName = roleInfo[t.role]?.name || 'Dorfbewohner';
+      socket.emit('game:privateResult', {
+        title: 'Seherinnenblick',
+        targetName: t.name,
+        isWolf,
+        roleName,
+        text: isWolf
+          ? `${t.name} gehört zum Werwolf-Rudel! 🐺`
+          : `${t.name} ist kein Werwolf (${roleName}). 👤`,
+        icon: isWolf ? '🐺' : '🔮',
+        theme: isWolf ? 'is-wolf' : 'is-safe',
+      });
       l.taskIndex++;
       return nextTask(l);
     }
@@ -751,9 +815,10 @@ io.on('connection', (socket) => {
       const wolves = alive(l)
         .filter((player) => player.role === 'wolf')
         .map((player) => player.name);
-      socket.emit('game:vision', {
-        name: wolves.join(', ') || 'niemand',
-        role: { name: 'Werwolf-Rudel', icon: '🐺' },
+      socket.emit('game:privateResult', {
+        title: 'Blick in die Nacht',
+        icon: '👁️',
+        text: `Das Rudel: ${wolves.join(', ') || 'niemand'}.`,
       });
     } else if (s.task === 'witchhunter') {
       l.nightData.witchhunterTarget = target;
@@ -770,6 +835,8 @@ io.on('connection', (socket) => {
     const l = lobbyFor(socket);
     if (!l || !l.selection?.actorIds.includes(socket.id)) return;
     if (l.phase === 'night') {
+      if (l.selection.task === 'wolf')
+        return error(socket, 'Stimme mit dem Rudel über ein Ziel ab.');
       l.taskIndex++;
       nextTask(l);
     } else if (l.phase === 'day') {
