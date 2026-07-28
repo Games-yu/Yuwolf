@@ -258,6 +258,9 @@ function addMessage(l, message) {
   l.messages.push(message);
   if (l.messages.length > 200) l.messages.splice(0, l.messages.length - 200);
 }
+function emitChatMessage(l, message) {
+  l.players.forEach((player) => io.to(player.id).emit('chat:message', message));
+}
 function system(l, text) {
   l.log.push(text);
   if (l.log.length > 80) l.log.splice(0, l.log.length - 80);
@@ -612,8 +615,9 @@ io.on('connection', (socket) => {
     if (socket.data.lastChat && now - socket.data.lastChat < 450)
       return error(socket, 'Warte einen Moment, bevor du erneut schreibst.');
     socket.data.lastChat = now;
-    addMessage(l, { name: p.name, text, at: now });
-    broadcast(l);
+    const message = { name: p.name, text, at: now };
+    addMessage(l, message);
+    emitChatMessage(l, message);
   });
   socket.on('chat:reaction', (emoji) => {
     const l = lobbyFor(socket);
@@ -622,8 +626,9 @@ io.on('connection', (socket) => {
     const now = Date.now();
     if (socket.data.lastReaction && now - socket.data.lastReaction < 700) return;
     socket.data.lastReaction = now;
-    addMessage(l, { name: player.name, text: emoji, at: now, reaction: true });
-    broadcast(l);
+    const message = { name: player.name, text: emoji, at: now, reaction: true };
+    addMessage(l, message);
+    emitChatMessage(l, message);
   });
   socket.on('game:start', () => {
     const l = lobbyFor(socket);

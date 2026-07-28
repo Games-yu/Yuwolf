@@ -5,7 +5,9 @@ let state = null,
   selected = null,
   vision = null,
   cardOpen = false,
-  lobbyRequestPending = false;
+  lobbyRequestPending = false,
+  pendingChatMessages = [],
+  chatFlushQueued = false;
 const esc = (s) =>
   String(s ?? '').replace(
     /[&<>"']/g,
@@ -46,6 +48,7 @@ function landing(lobbies = []) {
   };
   document.querySelector('#join').onclick = () => join();
   renderList(lobbies);
+  app.dispatchEvent(new Event('yuwolf:render'));
 }
 function join(code) {
   const playerName = document.querySelector('#join-name').value.trim();
@@ -87,6 +90,7 @@ function renderList(list) {
 }
 function render() {
   if (!state) return;
+  pendingChatMessages.length = 0;
   const own = state.own,
     isHost = state.hostId === socket.id;
   const everyone = state.players
@@ -104,6 +108,7 @@ function render() {
   else center = gameCenter(own, isHost);
   app.innerHTML = `<section class="room"><aside class="side"><article class="panel"><div class="eyebrow">Lobby-Code</div><div class="code">${state.code}</div><ul class="players">${everyone}</ul></article><article class="panel"><div class="eyebrow">Deine geheime Rolle</div>${own?.role ? `<div class="rolecard"><div class="icon">${own.role.icon}</div><h2>${own.role.name}</h2><p>${own.role.description}</p></div>` : '<p class="muted">Die Rollen werden beim Start verteilt.</p>'}</article><article class="panel"><div class="eyebrow">Chronik</div><div class="log">${state.log.map((x) => '• ' + esc(x)).join('<br>')}</div></article></aside><section>${center}</section><aside class="panel chat"><div class="eyebrow">Dorfplatz</div><div id="messages" class="messages">${state.messages.map((m) => (m.system ? `<div class="message system">${esc(m.text)}</div>` : `<div class="message"><b>${esc(m.name)}:</b> ${esc(m.text)}</div>`)).join('')}</div><div class="send"><input id="chat-input" class="input" maxlength="360" placeholder="Schreibe ins Dorf…">${button('Senden', 'button', 'send')}</div></aside></section>`;
   wireRender();
+  app.dispatchEvent(new Event('yuwolf:render'));
 }
 function gameCenter(own, isHost) {
   const s = state.selection,
@@ -199,6 +204,27 @@ function sendChat() {
     e.value = '';
   }
 }
+function appendChatMessages() {
+  chatFlushQueued = false;
+  const messages = document.querySelector('#messages');
+  if (!messages || !pendingChatMessages.length) return;
+  const shouldScroll = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 48;
+  const fragment = document.createDocumentFragment();
+  pendingChatMessages.splice(0).forEach((message) => {
+    const row = document.createElement('div');
+    row.className = message.system ? 'message system' : 'message';
+    if (message.system) row.textContent = message.text;
+    else {
+      const name = document.createElement('b');
+      name.textContent = `${message.name}: `;
+      row.append(name, document.createTextNode(message.text));
+    }
+    fragment.appendChild(row);
+  });
+  messages.appendChild(fragment);
+  while (messages.children.length > 100) messages.firstElementChild?.remove();
+  if (shouldScroll) messages.scrollTop = messages.scrollHeight;
+}
 socket.on('connect', () => (connection.textContent = '● Verbunden'));
 socket.on('disconnect', () => (connection.textContent = '○ Verbindung verloren'));
 socket.on('app:error', (message) => {
@@ -210,6 +236,15 @@ socket.on('app:error', (message) => {
 });
 socket.on('lobby:list', (list) => {
   if (!state) renderList(list);
+});
+socket.on('chat:message', (message) => {
+  if (!state || !message) return;
+  state.messages = [...state.messages, message].slice(-100);
+  pendingChatMessages.push(message);
+  if (!chatFlushQueued) {
+    chatFlushQueued = true;
+    requestAnimationFrame(appendChatMessages);
+  }
 });
 socket.on('lobby:state', (s) => {
   lobbyRequestPending = false;

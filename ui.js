@@ -393,8 +393,5 @@ function enhanceYuWolfUi() {
 }
 socket.on('lobby:left', () => window.location.assign('/'));
 const joinMatch = location.pathname.match(/^\/join\/([A-Z0-9]{6})$/i);
-new MutationObserver(enhanceYuWolfUi).observe(document.querySelector('#app'), {
-  childList: true,
-  subtree: true,
-});
+app.addEventListener('yuwolf:render', enhanceYuWolfUi);
 enhanceYuWolfUi();
