@@ -334,7 +334,8 @@ function handlePhaseTimeout(l, phase) {
   }
   if (phase === 'hunter') {
     system(l, 'Der Jäger hat keinen letzten Schuss abgegeben.');
-    return afterDeaths(l, () => beginNight(l));
+    const nextFn = l.selection?.next || (() => beginNight(l));
+    return afterDeaths(l, nextFn);
   }
 }
 function setPhase(l, phase, selection = null) {
@@ -400,7 +401,7 @@ function nextTask(l) {
   const task = l.tasks[l.taskIndex];
   if (!task) return dawn(l);
   const actors = alive(l).filter((p) => p.role === task);
-  if (!actors.length) {
+  if (!actors.length || !actors.some((p) => p.connected)) {
     l.taskIndex++;
     return nextTask(l);
   }
@@ -409,7 +410,9 @@ function nextTask(l) {
   let text = {
     wolf: 'Die Werwölfe wählen gemeinsam ein Opfer.',
     seer: 'Die Seherin darf eine Rolle prüfen.',
-    witch: 'Die Hexe entscheidet über ihre Tränke.',
+    witch: l.nightData?.wolfTarget
+      ? `Das Rudel hat ${find(l, l.nightData.wolfTarget)?.name || 'jemanden'} angegriffen. Möchtest du den Heiltrank nutzen oder jemanden vergiften?`
+      : 'Das Rudel hat niemanden angegriffen. Du kannst den Gifttrank nutzen oder passen.',
     cupid: 'Amor verbindet zwei Herzen.',
     guardian: 'Der Schutzgeist wählt eine Person unter seinem Schild.',
     piper: 'Der Flötenspieler verzaubert eine Person.',
@@ -513,15 +516,28 @@ function afterDeaths(l, next) {
 function dawn(l) {
   const d = l.nightData;
   system(l, 'Der Nebel lichtet sich. DüsterWald erwacht langsam.');
-  if (d.wolfTarget && !d.healed && d.wolfTarget !== d.protected)
+  let deaths = 0;
+  if (d.wolfTarget && !d.healed && d.wolfTarget !== d.protected) {
     kill(l, d.wolfTarget, 'ist in der Nacht gestorben');
-  else if (d.wolfTarget === d.protected)
+    deaths++;
+  } else if (d.wolfTarget && d.wolfTarget === d.protected) {
     system(l, 'Ein unsichtbarer Schild hat ein Leben bewahrt.');
-  if (d.poisonTarget) kill(l, d.poisonTarget, 'wurde vergiftet');
-  if (d.vampireTarget) kill(l, d.vampireTarget, 'wurde vom Vampir heimgesucht');
-  if (d.witchhunterTarget && find(l, d.witchhunterTarget)?.role === 'witch')
+  } else if (d.wolfTarget && d.healed) {
+    system(l, 'Die Hexe hat das Opfer der Wölfe gerettet.');
+  }
+  if (d.poisonTarget) {
+    kill(l, d.poisonTarget, 'wurde vergiftet');
+    deaths++;
+  }
+  if (d.vampireTarget) {
+    kill(l, d.vampireTarget, 'wurde vom Vampir heimgesucht');
+    deaths++;
+  }
+  if (d.witchhunterTarget && find(l, d.witchhunterTarget)?.role === 'witch') {
     kill(l, d.witchhunterTarget, 'wurde vom Hexenjäger enttarnt');
-  if (!d.wolfTarget && !d.poisonTarget) system(l, 'Diese Nacht ist niemand gestorben.');
+    deaths++;
+  }
+  if (deaths === 0) system(l, 'Diese Nacht ist niemand gestorben.');
   afterDeaths(l, () => dayVote(l));
 }
 function dayVote(l) {
@@ -627,13 +643,26 @@ io.on('connection', (socket) => {
       ),
       name = cleanText(data?.playerName, 22);
     if (!l) return error(socket, 'Diese Lobby existiert nicht.');
+    if (!name) return error(socket, 'Bitte gib einen Spielernamen ein.');
+    const existingPlayer = l.players.find((p) => normalizeName(p.name) === normalizeName(name));
+    if (existingPlayer) {
+      if (existingPlayer.connected) return error(socket, 'Dieser Name ist bereits online.');
+      if (l.private && !passwordsMatch(l.passwordHash, String(data?.password || ''), l.code))
+        return error(socket, 'Das Passwort ist nicht korrekt.');
+      const oldId = existingPlayer.id;
+      existingPlayer.id = socket.id;
+      existingPlayer.connected = true;
+      if (l.hostId === oldId) l.hostId = socket.id;
+      socket.data.lobbyCode = l.code;
+      socket.join(l.code);
+      system(l, `${existingPlayer.name} ist wieder verbunden.`);
+      broadcast(l);
+      return;
+    }
     if (l.phase !== 'lobby') return error(socket, 'Diese Runde läuft bereits.');
     if (l.players.length >= l.maxPlayers) return error(socket, 'Die Lobby ist voll.');
     if (l.private && !passwordsMatch(l.passwordHash, String(data?.password || ''), l.code))
       return error(socket, 'Das Passwort ist nicht korrekt.');
-    if (!name) return error(socket, 'Bitte gib einen Spielernamen ein.');
-    if (l.players.some((p) => normalizeName(p.name) === normalizeName(name)))
-      return error(socket, 'Dieser Name ist bereits vergeben.');
     l.players.push({ id: socket.id, name, alive: true, connected: true, ready: false });
     socket.data.lobbyCode = l.code;
     socket.join(l.code);
@@ -790,9 +819,12 @@ io.on('connection', (socket) => {
       return nextTask(l);
     }
     if (s.task === 'witch') {
-      if (data.kind === 'heal' && l.potions.heal && l.nightData.wolfTarget) {
-        l.potions.heal = false;
-        l.nightData.healed = true;
+      if (data.kind === 'heal') {
+        const victim = l.nightData.wolfTarget;
+        if (l.potions.heal && victim) {
+          l.potions.heal = false;
+          l.nightData.healed = true;
+        } else return error(socket, 'Heiltrank ist gerade nicht verfügbar.');
       } else if (data.kind === 'poison' && l.potions.poison) {
         l.potions.poison = false;
         l.nightData.poisonTarget = target;
@@ -824,7 +856,8 @@ io.on('connection', (socket) => {
       l.nightData.witchhunterTarget = target;
     } else if (l.phase === 'hunter') {
       kill(l, target, 'wurde vom Jäger getroffen');
-      return afterDeaths(l, () => beginNight(l));
+      const nextFn = s.next || (() => beginNight(l));
+      return afterDeaths(l, nextFn);
     } else {
       return error(socket, 'Diese Nachtaktion ist nicht verfügbar.');
     }
@@ -844,7 +877,8 @@ io.on('connection', (socket) => {
       beginNight(l);
     } else if (l.phase === 'hunter') {
       system(l, 'Der Jäger verzichtet auf seinen letzten Schuss.');
-      afterDeaths(l, () => beginNight(l));
+      const nextFn = l.selection?.next || (() => beginNight(l));
+      afterDeaths(l, nextFn);
     }
   });
   socket.on('game:vote', (target) => {

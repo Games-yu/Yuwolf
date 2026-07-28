@@ -111,6 +111,14 @@ function renderList(list) {
 function render() {
   if (!state) return;
   const previousScroll = window.scrollY;
+  const activeEl = document.activeElement;
+  const activeId = activeEl?.id;
+  const activeStart = activeEl?.selectionStart;
+  const activeEnd = activeEl?.selectionEnd;
+  const chatVal = document.querySelector('#chat-input')?.value;
+  const houseRulesVal = document.querySelector('#house-rules')?.value;
+  const notesVal = document.querySelector('#private-notes textarea')?.value;
+
   pendingChatMessages.length = 0;
   const own = state.own,
     isHost = state.hostId === socket.id;
@@ -131,6 +139,26 @@ function render() {
   wireRender();
   app.dispatchEvent(new Event('yuwolf:render'));
   updatePhaseTimerDisplay();
+
+  if (chatVal !== undefined && document.querySelector('#chat-input')) {
+    document.querySelector('#chat-input').value = chatVal;
+  }
+  if (houseRulesVal !== undefined && document.querySelector('#house-rules')) {
+    document.querySelector('#house-rules').value = houseRulesVal;
+  }
+  if (notesVal !== undefined && document.querySelector('#private-notes textarea')) {
+    document.querySelector('#private-notes textarea').value = notesVal;
+  }
+  if (activeId) {
+    const el = document.querySelector('#' + activeId);
+    if (el && typeof el.focus === 'function') {
+      el.focus();
+      if (typeof activeStart === 'number' && typeof activeEnd === 'number' && el.setSelectionRange) {
+        try { el.setSelectionRange(activeStart, activeEnd); } catch (_) {}
+      }
+    }
+  }
+
   requestAnimationFrame(() => window.scrollTo({ top: previousScroll, behavior: 'auto' }));
 }
 function gameCenter(own, isHost) {
@@ -159,7 +187,29 @@ function gameCenter(own, isHost) {
   } else
     action =
       '<p class="muted">Die Nacht ist still. Warte, bis die anderen Rollen gehandelt haben.</p>';
-  return `<div class="game"><div class="phase">${state.phase === 'day' ? '☀ Tag' : '☾ Nacht'} ${state.night}</div>${timer}<h1 class="title">${state.phase === 'day' ? 'Das Dorf erwacht' : s?.task === 'wolf' ? 'Das Rudel erwacht' : s?.task === 'seer' ? 'Die Seherin erwacht' : s?.task === 'witch' ? 'Die Hexe erwacht' : s?.task === 'cupid' ? 'Amor erwacht' : 'Der Jäger zielt'}</h1><div class="notice"><p>${esc(s?.text || '')}</p>${vision ? `<div class="rolecard"><div class="icon">${vision.role.icon}</div><h2>${vision.name} ist ${vision.role.name}</h2><p>Dieses Wissen gehört nur dir.</p></div>` : ''}${action}</div></div>`;
+
+  const TITLE_MAP = {
+    day: 'Das Dorf erwacht',
+    hunter: 'Der Jäger zielt',
+    wolf: 'Das Rudel erwacht',
+    seer: 'Die Seherin erwacht',
+    witch: 'Die Hexe erwacht',
+    cupid: 'Amor erwacht',
+    guardian: 'Der Schutzgeist erwacht',
+    piper: 'Der Flötenspieler erwacht',
+    vampire: 'Der Vampir erwacht',
+    thief: 'Die Diebin erwacht',
+    doppelganger: 'Der Doppelgänger erwacht',
+    girl: 'Das Mädchen erwacht',
+    witchhunter: 'Der Hexenjäger erwacht',
+    waiting: 'Die Nacht ist still',
+  };
+  const titleText =
+    state.phase === 'night'
+      ? TITLE_MAP[s?.task] || 'Die Nacht ist still'
+      : TITLE_MAP[state.phase] || 'YuWolf';
+
+  return `<div class="game"><div class="phase">${state.phase === 'day' ? '☀ Tag' : '☾ Nacht'} ${state.night}</div>${timer}<h1 class="title">${titleText}</h1><div class="notice"><p>${esc(s?.text || '')}</p>${vision ? `<div class="rolecard"><div class="icon">${vision.role.icon}</div><h2>${vision.name} ist ${vision.role.name}</h2><p>Dieses Wissen gehört nur dir.</p></div>` : ''}${action}</div></div>`;
 }
 function targetButtons(targets, type) {
   return `<div class="choice-grid">${targets
@@ -216,7 +266,7 @@ function wireRender() {
   });
   document.querySelector('#heal')?.addEventListener('click', () => {
     vision = null;
-    socket.emit('game:action', { target: state.selection.targets[0]?.id, kind: 'heal' });
+    socket.emit('game:action', { kind: 'heal' });
   });
   document.querySelectorAll('[data-target]').forEach(
     (b) =>
