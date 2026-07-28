@@ -7,7 +7,9 @@ let state = null,
   cardOpen = false,
   lobbyRequestPending = false,
   pendingChatMessages = [],
-  chatFlushQueued = false;
+  chatFlushQueued = false,
+  cupidChoices = [],
+  timerInterval = null;
 const esc = (s) =>
   String(s ?? '').replace(
     /[&<>"']/g,
@@ -24,6 +26,7 @@ function button(text, cls = 'button', id = '') {
 }
 function landing(lobbies = []) {
   state = null;
+  clearPhaseTimerDisplay();
   app.innerHTML = `<section class="hero"><div class="eyebrow">Echtzeit-Mehrspieler · 5–16 Personen</div><h1>Die Nacht kennt<br>deinen Namen.</h1><p>Erstelle ein Dorf, teile einen Lobby-Code oder finde eine öffentliche Runde. Alle geheimen Rollen bleiben auf dem Server verborgen.</p></section><section class="landing-grid"><article class="panel"><h2 class="section-title">Eine Lobby eröffnen</h2><p class="muted">Du bist Spielleitung und bestimmst die Rollen.</p><div class="form"><input id="create-name" class="input" placeholder="Dein Spielername" maxlength="22"><input id="lobby-name" class="input" placeholder="Name der Lobby, z. B. Vollmond" maxlength="30"><select id="max"><option value="8">Bis 8 Personen</option><option value="12" selected>Bis 12 Personen</option><option value="16">Bis 16 Personen</option></select><label class="check"><input id="private" type="checkbox"> Private Lobby mit Passwort</label><input id="password" class="input" placeholder="Passwort (nur private Lobby)" maxlength="32" disabled><div class="roles"><label class="check"><input type="checkbox" value="seer" checked> 🔮 Seherin</label><label class="check"><input type="checkbox" value="witch" checked> ⚗️ Hexe</label><label class="check"><input type="checkbox" value="hunter" checked> 🏹 Jäger</label><label class="check"><input type="checkbox" value="cupid" checked> 💘 Amor</label></div>${button('Lobby erstellen', 'button', 'create')}</div></article><article class="panel"><h2 class="section-title">Öffentliche Dörfer</h2><p class="muted">Oder trete mit einem Lobby-Code bei.</p><div class="form"><input id="join-name" class="input" placeholder="Dein Spielername" maxlength="22"><input id="join-code" class="input" placeholder="Lobby-Code" maxlength="6"><input id="join-password" class="input" placeholder="Passwort, falls benötigt" maxlength="32">${button('Mit Code beitreten', 'button secondary', 'join')}</div><div id="public-list" class="players"></div></article></section>`;
   document.querySelector('#private').onchange = (e) =>
     (document.querySelector('#password').disabled = !e.target.checked);
@@ -90,6 +93,7 @@ function renderList(list) {
 }
 function render() {
   if (!state) return;
+  const previousScroll = window.scrollY;
   pendingChatMessages.length = 0;
   const own = state.own,
     isHost = state.hostId === socket.id;
@@ -109,11 +113,16 @@ function render() {
   app.innerHTML = `<section class="room"><aside class="side"><article class="panel"><div class="eyebrow">Lobby-Code</div><div class="code">${state.code}</div><ul class="players">${everyone}</ul></article><article class="panel"><div class="eyebrow">Deine geheime Rolle</div>${own?.role ? `<div class="rolecard"><div class="icon">${own.role.icon}</div><h2>${own.role.name}</h2><p>${own.role.description}</p></div>` : '<p class="muted">Die Rollen werden beim Start verteilt.</p>'}</article><article class="panel"><div class="eyebrow">Chronik</div><div class="log">${state.log.map((x) => '• ' + esc(x)).join('<br>')}</div></article></aside><section>${center}</section><aside class="panel chat"><div class="eyebrow">Dorfplatz</div><div id="messages" class="messages">${state.messages.map((m) => (m.system ? `<div class="message system">${esc(m.text)}</div>` : `<div class="message"><b>${esc(m.name)}:</b> ${esc(m.text)}</div>`)).join('')}</div><div class="send"><input id="chat-input" class="input" maxlength="360" placeholder="Schreibe ins Dorf…">${button('Senden', 'button', 'send')}</div></aside></section>`;
   wireRender();
   app.dispatchEvent(new Event('yuwolf:render'));
+  updatePhaseTimerDisplay();
+  requestAnimationFrame(() => window.scrollTo({ top: previousScroll, behavior: 'auto' }));
 }
 function gameCenter(own, isHost) {
   const s = state.selection,
     active = s?.actorIds?.includes(socket.id),
     targets = s?.targets || [];
+  const timer = state.timer
+    ? `<div class="phase-timer"><span>${state.phase === 'day' ? 'Abstimmung endet in' : 'Entscheidung endet in'}</span><strong id="phase-timer" data-deadline="${state.timer.deadline}">--:--</strong></div>`
+    : '';
   let action = '';
   if (state.phase === 'day') {
     action = isHost
@@ -133,10 +142,17 @@ function gameCenter(own, isHost) {
   } else
     action =
       '<p class="muted">Die Nacht ist still. Warte, bis die anderen Rollen gehandelt haben.</p>';
-  return `<div class="game"><div class="phase">${state.phase === 'day' ? '☀ Tag' : '☾ Nacht'} ${state.night}</div><h1 class="title">${state.phase === 'day' ? 'Das Dorf erwacht' : s?.task === 'wolf' ? 'Das Rudel erwacht' : s?.task === 'seer' ? 'Die Seherin erwacht' : s?.task === 'witch' ? 'Die Hexe erwacht' : s?.task === 'cupid' ? 'Amor erwacht' : 'Der Jäger zielt'}</h1><div class="notice"><p>${esc(s?.text || '')}</p>${vision ? `<div class="rolecard"><div class="icon">${vision.role.icon}</div><h2>${vision.name} ist ${vision.role.name}</h2><p>Dieses Wissen gehört nur dir.</p></div>` : ''}${action}</div></div>`;
+  return `<div class="game"><div class="phase">${state.phase === 'day' ? '☀ Tag' : '☾ Nacht'} ${state.night}</div>${timer}<h1 class="title">${state.phase === 'day' ? 'Das Dorf erwacht' : s?.task === 'wolf' ? 'Das Rudel erwacht' : s?.task === 'seer' ? 'Die Seherin erwacht' : s?.task === 'witch' ? 'Die Hexe erwacht' : s?.task === 'cupid' ? 'Amor erwacht' : 'Der Jäger zielt'}</h1><div class="notice"><p>${esc(s?.text || '')}</p>${vision ? `<div class="rolecard"><div class="icon">${vision.role.icon}</div><h2>${vision.name} ist ${vision.role.name}</h2><p>Dieses Wissen gehört nur dir.</p></div>` : ''}${action}</div></div>`;
 }
 function targetButtons(targets, type) {
-  return `<div class="choice-grid">${targets.map((t) => `<button class="choice ${selected === t.id ? 'selected' : ''}" data-target="${t.id}" data-type="${type}">${esc(t.name)}</button>`).join('')}</div>`;
+  return `<div class="choice-grid">${targets
+    .map((target) => {
+      const isSelected =
+        type === 'love' ? cupidChoices.includes(target.id) : selected === target.id;
+      const voteCount = type === 'vote' ? state.vote?.tally?.[target.id] || 0 : null;
+      return `<button class="choice ${isSelected ? 'selected' : ''}" data-target="${target.id}" data-type="${type}">${esc(target.name)}${voteCount !== null ? `<span class="vote-count">${voteCount}</span>` : ''}</button>`;
+    })
+    .join('')}</div>`;
 }
 function revealCeremony() {
   if (state.revealDone)
@@ -178,20 +194,20 @@ function wireRender() {
         if (type === 'hunter') return socket.emit('game:action', { target: selected });
         if (type === 'poison')
           return socket.emit('game:action', { target: selected, kind: 'poison' });
-        if (type === 'love') return render();
+        if (type === 'love') {
+          if (cupidChoices.includes(selected))
+            cupidChoices = cupidChoices.filter((id) => id !== selected);
+          else if (cupidChoices.length < 2) cupidChoices.push(selected);
+          else return toast('Du kannst nur zwei Personen auswählen.');
+          return render();
+        }
         socket.emit('game:action', { target: selected });
       }),
   );
   document.querySelector('#act')?.addEventListener('click', () => {
-    if (!selected) return toast('Wähle zwei verschiedene Personen.');
-    const others = state.selection.targets.filter((t) => t.id !== selected);
-    if (!window.loveSecond) {
-      window.loveSecond = others[0]?.id;
-      toast('Wähle jetzt die zweite Person.');
-      return;
-    }
-    socket.emit('game:action', { target: selected, second: window.loveSecond });
-    window.loveSecond = null;
+    if (cupidChoices.length !== 2) return toast('Wähle genau zwei verschiedene Personen.');
+    socket.emit('game:action', { target: cupidChoices[0], second: cupidChoices[1] });
+    cupidChoices = [];
     selected = null;
   });
   const messages = document.querySelector('#messages');
@@ -225,6 +241,26 @@ function appendChatMessages() {
   while (messages.children.length > 100) messages.firstElementChild?.remove();
   if (shouldScroll) messages.scrollTop = messages.scrollHeight;
 }
+function clearPhaseTimerDisplay() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+}
+function updatePhaseTimerDisplay() {
+  clearPhaseTimerDisplay();
+  const display = document.querySelector('#phase-timer');
+  if (!display) return;
+  const deadline = Number(display.dataset.deadline);
+  const update = () => {
+    const seconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+    display.textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(
+      seconds % 60,
+    ).padStart(2, '0')}`;
+    display.closest('.phase-timer')?.classList.toggle('is-ending', seconds <= 10);
+    if (seconds === 0) clearPhaseTimerDisplay();
+  };
+  update();
+  timerInterval = setInterval(update, 250);
+}
 socket.on('connect', () => (connection.textContent = '● Verbunden'));
 socket.on('disconnect', () => (connection.textContent = '○ Verbindung verloren'));
 socket.on('app:error', (message) => {
@@ -252,6 +288,7 @@ socket.on('lobby:state', (s) => {
   if (s.phase !== 'reveal') cardOpen = false;
   state = s;
   selected = null;
+  cupidChoices = [];
   vision = null;
   render();
 });

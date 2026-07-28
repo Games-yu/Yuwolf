@@ -295,6 +295,7 @@ select:focus-visible {
   margin: 16px 0;
 }
 .choice {
+  position: relative;
   padding: 12px;
   text-align: left;
   background: #1b2030;
@@ -306,6 +307,46 @@ select:focus-visible {
 .choice.selected,
 .choice:hover {
   border-color: var(--gold);
+}
+.vote-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 25px;
+  height: 25px;
+  margin-left: 8px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: #241a08;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+.phase-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 14px auto 0;
+  padding: 8px 12px;
+  border: 1px solid #e5bd6860;
+  border-radius: 999px;
+  background: #121725d9;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.phase-timer strong {
+  color: var(--gold);
+  font-family: Cinzel, serif;
+  font-size: 18px;
+  letter-spacing: 1px;
+}
+.phase-timer.is-ending {
+  border-color: #d75a62;
+  color: #f0c3c6;
+}
+.phase-timer.is-ending strong {
+  color: #ff8c95;
 }
 .chat {
   display: flex;

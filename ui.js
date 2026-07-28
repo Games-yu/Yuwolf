@@ -348,7 +348,7 @@ function enhanceYuWolfUi() {
     if (notice && targets.length) {
       const vote = document.createElement('div');
       vote.id = 'quick-vote';
-      vote.innerHTML = `<p class="muted">Gib deine geheime Stimme ab.</p><div class="choice-grid">${targets.map((target) => `<button class="choice" data-online-vote="${target.id}">${target.name}</button>`).join('')}</div>`;
+      vote.innerHTML = `<p class="muted">Gib deine Stimme ab.</p><div class="choice-grid">${targets.map((target) => `<button class="choice" data-online-vote="${target.id}">${target.name}<span class="vote-count">${state.vote?.tally?.[target.id] || 0}</span></button>`).join('')}</div>`;
       notice.appendChild(vote);
       vote
         .querySelectorAll('[data-online-vote]')

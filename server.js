@@ -14,6 +14,9 @@ const io = new Server(server, {
   },
 });
 const PORT = process.env.PORT || 3000;
+const NIGHT_ACTION_MS = 45_000;
+const DAY_VOTE_MS = 90_000;
+const HUNTER_ACTION_MS = 30_000;
 app.disable('x-powered-by');
 app.use((_, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -180,6 +183,7 @@ function leaveLobby(socket, l) {
   socket.leave(l.code);
   socket.data.lobbyCode = undefined;
   if (!l.players.length) {
+    clearPhaseTimer(l);
     lobbies.delete(l.code);
     emitList();
     return;
@@ -236,6 +240,7 @@ function playerView(l, player) {
     log: l.log.slice(-12),
     own,
     selection: l.selection,
+    timer: l.phaseDeadline ? { deadline: l.phaseDeadline, phase: l.phase } : null,
     winner: l.winner,
     settings: l.settings,
     voteHistory: l.settings.voteReveal ? (l.voteHistory || []).slice(-8) : [],
@@ -246,7 +251,16 @@ function playerView(l, player) {
     revealedCount: l.revealed?.size || 0,
     vote:
       l.phase === 'day'
-        ? { cast: l.votes?.has(player.id) || false, count: l.votes?.size || 0 }
+        ? {
+            cast: l.votes?.has(player.id) || false,
+            count: l.votes?.size || 0,
+            tally: Object.fromEntries(
+              [...(l.votes?.values() || [])].reduce((counts, target) => {
+                counts.set(target, (counts.get(target) || 0) + 1);
+                return counts;
+              }, new Map()),
+            ),
+          }
         : null,
   };
 }
@@ -266,9 +280,42 @@ function system(l, text) {
   if (l.log.length > 80) l.log.splice(0, l.log.length - 80);
   addMessage(l, { system: true, text, at: Date.now() });
 }
+function clearPhaseTimer(l) {
+  if (l.phaseTimer) clearTimeout(l.phaseTimer);
+  l.phaseTimer = null;
+  l.phaseDeadline = null;
+}
+function phaseDuration(phase) {
+  if (phase === 'night') return NIGHT_ACTION_MS;
+  if (phase === 'day') return DAY_VOTE_MS;
+  if (phase === 'hunter') return HUNTER_ACTION_MS;
+  return null;
+}
+function handlePhaseTimeout(l, phase) {
+  if (!lobbies.has(l.code) || l.phase !== phase) return;
+  if (phase === 'night') {
+    system(l, 'Die Nachtzeit ist abgelaufen. Die nächste Rolle erwacht.');
+    l.taskIndex++;
+    return nextTask(l);
+  }
+  if (phase === 'day') {
+    system(l, 'Die Abstimmungszeit ist abgelaufen.');
+    return resolveVotes(l);
+  }
+  if (phase === 'hunter') {
+    system(l, 'Der Jäger hat keinen letzten Schuss abgegeben.');
+    return afterDeaths(l, () => beginNight(l));
+  }
+}
 function setPhase(l, phase, selection = null) {
+  clearPhaseTimer(l);
   l.phase = phase;
   l.selection = selection;
+  const duration = phaseDuration(phase);
+  if (duration) {
+    l.phaseDeadline = Date.now() + duration;
+    l.phaseTimer = setTimeout(() => handlePhaseTimeout(l, phase), duration);
+  }
   broadcast(l);
 }
 function validTarget(l, id) {
@@ -396,21 +443,23 @@ function checkWinner(l) {
   return false;
 }
 function afterDeaths(l, next) {
-  if (checkWinner(l)) {
-    setPhase(l, 'ended');
-    return;
-  }
   if (l.hunter) {
     const hunter = l.hunter;
     l.hunter = null;
+    const targets = alive(l)
+      .filter((p) => p.id !== hunter)
+      .map((p) => ({ id: p.id, name: p.name }));
+    if (!targets.length) return next();
     setPhase(l, 'hunter', {
       actorIds: [hunter],
       text: 'Der Jäger nimmt eine Person mit in den Tod.',
-      targets: alive(l)
-        .filter((p) => p.id !== hunter)
-        .map((p) => ({ id: p.id, name: p.name })),
+      targets,
       next,
     });
+    return;
+  }
+  if (checkWinner(l)) {
+    setPhase(l, 'ended');
     return;
   }
   next();
@@ -650,7 +699,8 @@ io.on('connection', (socket) => {
   socket.on('game:action', (data) => {
     const l = lobbyFor(socket),
       p = l && find(l, socket.id);
-    if (!l || !p || !p.alive) return;
+    const isHunterLastShot = l?.phase === 'hunter' && l.selection?.actorIds?.includes(socket.id);
+    if (!l || !p || (!p.alive && !isHunterLastShot)) return;
     const s = l.selection,
       target = String(data?.target || '');
     if (!s || !s.actorIds.includes(socket.id))
@@ -725,6 +775,9 @@ io.on('connection', (socket) => {
     } else if (l.phase === 'day') {
       system(l, 'Das Dorf konnte sich nicht einigen.');
       beginNight(l);
+    } else if (l.phase === 'hunter') {
+      system(l, 'Der Jäger verzichtet auf seinen letzten Schuss.');
+      afterDeaths(l, () => beginNight(l));
     }
   });
   socket.on('game:vote', (target) => {
@@ -770,8 +823,10 @@ io.on('connection', (socket) => {
           system(cur, `${newHost.name} ist jetzt Host.`);
         }
       }
-      if (cur.players.every((x) => !x.connected)) lobbies.delete(cur.code);
-      else broadcast(cur);
+      if (cur.players.every((x) => !x.connected)) {
+        clearPhaseTimer(cur);
+        lobbies.delete(cur.code);
+      } else broadcast(cur);
       emitList();
     }, 120_000);
   });
