@@ -12,7 +12,7 @@ YuWolf is designed for community game nights and private friend groups. The serv
 
 **Client** Vanilla JavaScript, HTML5, CSS3
 
-**Deployment** Railway
+**Deployment** Render
 
 **Code Formatting** Prettier
 
@@ -74,18 +74,18 @@ npm start
 
 Then open `http://localhost:3001`.
 
-## Deploy on Railway
+## Deploy on Render
 
-YuWolf uses Socket.IO and needs a continuously running Node.js server. Railway is a suitable deployment option.
+YuWolf uses Socket.IO and needs a continuously running Node.js server. Render is a suitable deployment option.
 
 1. Push the project to a GitHub repository.
-2. Create a new Railway project and select **Deploy from GitHub Repo**.
-3. Select the YuWolf repository.
-4. Railway runs the included `npm start` script.
-5. Create a public domain under **Networking**.
-6. Open the generated URL and share it with your players.
-
-The included `railway.toml` configures the start command, health check, and restart policy.
+2. Sign in to [Render](https://render.com) and click **New > Web Service**.
+3. Select **Build and deploy from a Git repository** and connect your GitHub repository.
+4. Set the **Build Command** to `npm install`.
+5. Set the **Start Command** to `npm start`.
+6. Choose the **Node** runtime.
+7. Click **Create Web Service**.
+8. Once deployed, Render will generate a public URL (e.g., `yuwolf.onrender.com`). Open this URL and share it with your players.
 
 ## Project Structure
 
@@ -95,7 +95,6 @@ werwolf.html    Main game interface
 game.js         Browser game and lobby logic
 ui.js           UI helpers, dialogs, invite flow, and role settings
 style.css       Responsive styling, cards, and visual themes
-railway.toml    Railway deployment configuration
 package.json    Dependencies and npm scripts
 ```
 
