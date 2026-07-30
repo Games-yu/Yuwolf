@@ -212,13 +212,30 @@ function leaveLobby(socket, l) {
   broadcast(l);
 }
 function playerView(l, player) {
+  // Build wolf team list for wolf players
+  const wolfTeam =
+    player?.role === 'wolf'
+      ? l.players
+          .filter((p) => p.id !== player.id && p.role === 'wolf')
+          .map((p) => ({ id: p.id, name: p.name, alive: p.alive }))
+      : null;
   const own = player
     ? {
         role: player.role && roleInfo[player.role],
         alive: player.alive,
         lover: l.lovers.includes(player.id),
         witch: player.role === 'witch' ? { heal: l.potions.heal, poison: l.potions.poison } : null,
+        wolfTeam,
       }
+    : null;
+  // Anonymous tally: only counts, no voter identity during active vote
+  const anonymousTally = l.phase === 'day'
+    ? Object.fromEntries(
+        [...(l.votes?.values() || [])].reduce((counts, target) => {
+          counts.set(target, (counts.get(target) || 0) + 1);
+          return counts;
+        }, new Map()),
+      )
     : null;
   return {
     code: l.code,
@@ -254,12 +271,8 @@ function playerView(l, player) {
         ? {
             cast: l.votes?.has(player.id) || false,
             count: l.votes?.size || 0,
-            tally: Object.fromEntries(
-              [...(l.votes?.values() || [])].reduce((counts, target) => {
-                counts.set(target, (counts.get(target) || 0) + 1);
-                return counts;
-              }, new Map()),
-            ),
+            myTarget: l.votes?.get(player.id) || null,
+            tally: anonymousTally,
           }
         : null,
   };
@@ -268,16 +281,19 @@ function selectionView(l, player) {
   const selection = l.selection;
   if (!selection) return null;
   const isActor = selection.actorIds?.includes(player?.id);
-  if (!isActor) {
+  // Dead spectators always see the waiting view, never night actions
+  if (!isActor || !player?.alive) {
     return l.phase === 'night'
       ? { task: 'waiting', actorIds: [], targets: [], text: 'Die Nacht ist still. Warte ab.' }
-      : selection;
+      : { ...selection, actorIds: [], spectator: true };
   }
   const view = { ...selection };
   if (selection.task === 'wolf') {
     const votes = l.nightData?.wolfVotes || new Map();
     const tally = new Map();
     const votersMap = new Map();
+    const totalWolves = alive(l).filter((p) => p.role === 'wolf').length;
+    const votedCount = votes.size;
     for (const [voterId, targetId] of votes.entries()) {
       tally.set(targetId, (tally.get(targetId) || 0) + 1);
       const voterPlayer = find(l, voterId);
@@ -290,6 +306,8 @@ function selectionView(l, player) {
     view.wolfVoters = Object.fromEntries(votersMap);
     view.wolfVoteCast = votes.has(player.id);
     view.wolfMyTarget = votes.get(player.id) || null;
+    view.wolfTotalCount = totalWolves;
+    view.wolfVotedCount = votedCount;
   }
   return view;
 }

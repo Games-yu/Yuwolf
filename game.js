@@ -15,19 +15,21 @@ const esc = (s) =>
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[c],
   );
-function toast(text) {
+function toast(text, type = '') {
   const e = document.querySelector('#toast');
   e.textContent = text;
-  e.className = 'toast show';
-  setTimeout(() => (e.className = 'toast'), 2600);
+  e.className = `toast show${type ? ' toast-' + type : ''}`;
+  setTimeout(() => (e.className = 'toast'), 3200);
 }
 function button(text, cls = 'button', id = '') {
   return `<button type="button" ${id ? `id="${id}"` : ''} class="${cls}">${text}</button>`;
 }
+
+/* ─── Landing ─── */
 function landing(lobbies = []) {
   state = null;
   clearPhaseTimerDisplay();
-  app.innerHTML = `<section class="hero"><div class="eyebrow">Echtzeit-Mehrspieler · 5–99 Personen</div><h1>Die Nacht kennt<br>deinen Namen.</h1><p>Erstelle ein Dorf, teile einen Lobby-Code oder finde eine öffentliche Runde. Alle geheimen Rollen bleiben auf dem Server verborgen.</p></section><section class="landing-grid"><article class="panel"><h2 class="section-title">Eine Lobby eröffnen</h2><p class="muted">Du bist Spielleitung und bestimmst die Rollen.</p><div class="form"><input id="create-name" class="input" placeholder="Dein Spielername" maxlength="22"><input id="lobby-name" class="input" placeholder="Name der Lobby, z. B. Vollmond" maxlength="30"><label class="eyebrow" style="margin-top: 4px; display: block;">Spieleranzahl</label><div class="max-player-options"><button type="button" class="max-opt-btn" data-val="8">8</button><button type="button" class="max-opt-btn active" data-val="12">12</button><button type="button" class="max-opt-btn" data-val="16">16</button><button type="button" class="max-opt-btn" data-val="custom">Custom</button></div><input id="max" type="hidden" value="12"><div id="custom-max-wrapper" style="display: none;"><input id="custom-max" type="number" class="input" placeholder="Spieleranzahl (5 - 99)" min="5" max="99" value="20"></div><label class="check"><input id="private" type="checkbox"> Private Lobby mit Passwort</label><input id="password" class="input" placeholder="Passwort (nur private Lobby)" maxlength="32" disabled><div class="roles"><label class="check"><input type="checkbox" value="seer" checked> 🔮 Seherin</label><label class="check"><input type="checkbox" value="witch" checked> ⚗️ Hexe</label><label class="check"><input type="checkbox" value="hunter" checked> 🏹 Jäger</label><label class="check"><input type="checkbox" value="cupid" checked> 💘 Amor</label></div>${button('Lobby erstellen', 'button', 'create')}</div></article><article class="panel"><h2 class="section-title">Öffentliche Dörfer</h2><p class="muted">Oder trete mit einem Lobby-Code bei.</p><div class="form"><input id="join-name" class="input" placeholder="Dein Spielername" maxlength="22"><input id="join-code" class="input" placeholder="Lobby-Code" maxlength="6"><input id="join-password" class="input" placeholder="Passwort, falls benötigt" maxlength="32">${button('Mit Code beitreten', 'button secondary', 'join')}</div><div id="public-list" class="players"></div></article></section>`;
+  app.innerHTML = `<section class="hero"><div class="eyebrow">Echtzeit-Mehrspieler · 5–99 Personen</div><h1>Die Nacht kennt<br>deinen Namen.</h1><p>Erstelle ein Dorf, teile einen Lobby-Code oder finde eine öffentliche Runde. Alle geheimen Rollen bleiben auf dem Server verborgen.</p></section><section class="landing-grid"><article class="panel"><h2 class="section-title">Eine Lobby eröffnen</h2><p class="muted">Du bist Spielleitung und bestimmst die Rollen.</p><div class="form"><input id="create-name" class="input" placeholder="Dein Spielername" maxlength="22"><input id="lobby-name" class="input" placeholder="Name der Lobby, z. B. Vollmond" maxlength="30"><label class="eyebrow" style="margin-top:4px;display:block;">Spieleranzahl</label><div class="max-player-options"><button type="button" class="max-opt-btn" data-val="8">8</button><button type="button" class="max-opt-btn active" data-val="12">12</button><button type="button" class="max-opt-btn" data-val="16">16</button><button type="button" class="max-opt-btn" data-val="custom">Custom</button></div><input id="max" type="hidden" value="12"><div id="custom-max-wrapper" style="display:none;"><input id="custom-max" type="number" class="input" placeholder="Spieleranzahl (5 - 99)" min="5" max="99" value="20"></div><label class="check"><input id="private" type="checkbox"> Private Lobby mit Passwort</label><input id="password" class="input" placeholder="Passwort (nur private Lobby)" maxlength="32" disabled><div class="roles"><label class="check"><input type="checkbox" value="seer" checked> 🔮 Seherin</label><label class="check"><input type="checkbox" value="witch" checked> ⚗️ Hexe</label><label class="check"><input type="checkbox" value="hunter" checked> 🏹 Jäger</label><label class="check"><input type="checkbox" value="cupid" checked> 💘 Amor</label></div>${button('Lobby erstellen', 'button', 'create')}</div></article><article class="panel"><h2 class="section-title">Öffentliche Dörfer</h2><p class="muted">Oder trete mit einem Lobby-Code bei.</p><div class="form"><input id="join-name" class="input" placeholder="Dein Spielername" maxlength="22"><input id="join-code" class="input" placeholder="Lobby-Code" maxlength="6"><input id="join-password" class="input" placeholder="Passwort, falls benötigt" maxlength="32">${button('Mit Code beitreten', 'button secondary', 'join')}</div><div id="public-list" class="players"></div></article></section>`;
   document.querySelectorAll('.max-opt-btn').forEach((btn) => {
     btn.onclick = () => {
       document.querySelectorAll('.max-opt-btn').forEach((b) => b.classList.remove('active'));
@@ -108,6 +110,8 @@ function renderList(list) {
       }),
   );
 }
+
+/* ─── Main Render ─── */
 function render() {
   if (!state) return;
   const previousScroll = window.scrollY;
@@ -122,33 +126,71 @@ function render() {
   pendingChatMessages.length = 0;
   const own = state.own,
     isHost = state.hostId === socket.id;
+  const isSpectator = own && !own.alive;
+
   const everyone = state.players
-    .map(
-      (p) =>
-        `<li class="${!p.alive ? 'dead' : ''} ${!p.connected ? 'offline' : ''}">${p.host ? '♛ ' : ''}${esc(p.name)} ${!p.connected ? '· getrennt' : ''}</li>`,
-    )
+    .map((p) => {
+      const isMe = p.id === socket.id;
+      const isWolfTeam = own?.wolfTeam?.some((w) => w.id === p.id);
+      return `<li class="${!p.alive ? 'dead' : ''} ${!p.connected ? 'offline' : ''} ${isWolfTeam ? 'wolf-ally' : ''} ${isMe ? 'me' : ''}" title="${isWolfTeam ? '🐺 Dein Rudel-Mitglied' : ''}">
+        <span class="player-name">${p.host ? '♛ ' : ''}${esc(p.name)}${isMe ? ' <span class="me-tag">Ich</span>' : ''}${isWolfTeam ? ' <span class="wolf-tag">🐺</span>' : ''}</span>
+        <span class="player-status">${!p.connected ? '· getrennt' : !p.alive ? '· ☠' : p.ready && state.phase === 'lobby' ? '· ✓' : ''}</span>
+      </li>`;
+    })
     .join('');
+
   let center;
-  if (state.phase === 'lobby')
-    center = `<div class="game"><div class="phase">Warte auf das Rudel</div><h1 class="title">${esc(state.name)}</h1><div class="notice"><h2 class="section-title">Teile diesen Code</h2><div class="code">${state.code}</div><p class="muted">${state.private ? 'Private Lobby · Passwort erforderlich' : 'Öffentliche Lobby'} · ${state.players.length}/${state.max} Personen</p>${isHost ? button('Spiel starten', 'button', 'start') : '<p class="muted">Der Host startet, sobald alle da sind.</p>'}</div>${isHost ? `<div class="log">Aktive Sonderrollen: ${state.settings.roles.map((r) => ({ seer: 'Seherin', witch: 'Hexe', hunter: 'Jäger', cupid: 'Amor' })[r]).join(', ') || 'keine'}</div>` : ''}</div>`;
-  else if (state.phase === 'ended')
-    center = `<div class="game"><div class="phase">Die letzte Nacht ist vorbei</div><h1 class="title">${state.winner}</h1><div class="notice"><p class="muted">Die Rollen werden enthüllt:</p><div class="choice-grid">${state.players.map((p) => `<div class="choice ${p.alive ? '' : 'dead'}">${esc(p.name)}<br><small>${p.alive ? 'überlebt' : 'ausgeschieden'}</small></div>`).join('')}</div>${button('Zur Startseite', 'button', 'home')}</div></div>`;
+  if (state.phase === 'lobby') center = lobbyCenter(isHost, own);
+  else if (state.phase === 'ended') center = endedCenter();
   else if (state.phase === 'reveal') center = revealCeremony();
-  else center = gameCenter(own, isHost);
-  app.innerHTML = `<section class="room"><aside class="side"><article class="panel"><div class="eyebrow">Lobby-Code</div><div class="code">${state.code}</div><ul class="players">${everyone}</ul></article><article class="panel"><div class="eyebrow">Deine geheime Rolle</div>${own?.role ? `<div class="rolecard"><div class="icon">${own.role.icon}</div><h2>${own.role.name}</h2><p>${own.role.description}</p></div>` : '<p class="muted">Die Rollen werden beim Start verteilt.</p>'}</article><article class="panel"><div class="eyebrow">Chronik</div><div class="log">${state.log.map((x) => '• ' + esc(x)).join('<br>')}</div></article></aside><section>${center}</section><aside class="panel chat"><div class="eyebrow">Dorfplatz</div><div id="messages" class="messages">${state.messages.map((m) => (m.system ? `<div class="message system">${esc(m.text)}</div>` : `<div class="message"><b>${esc(m.name)}:</b> ${esc(m.text)}</div>`)).join('')}</div><div class="send"><input id="chat-input" class="input" maxlength="360" placeholder="Schreibe ins Dorf…">${button('Senden', 'button', 'send')}</div></aside></section>`;
+  else center = gameCenter(own, isHost, isSpectator);
+
+  // Phase banner
+  const phaseBanner = buildPhaseBanner();
+
+  app.innerHTML = `<section class="room">
+    <aside class="side">
+      <article class="panel">
+        <div class="eyebrow">Lobby-Code</div>
+        <div class="code">${state.code}</div>
+        <ul class="players">${everyone}</ul>
+      </article>
+      <article class="panel rolecard-panel">
+        <div class="eyebrow">Deine geheime Rolle</div>
+        ${own?.role ? roleCardSidebar(own) : '<p class="muted">Die Rollen werden beim Start verteilt.</p>'}
+      </article>
+      <article class="panel">
+        <div class="eyebrow">Chronik</div>
+        <div class="log">${state.log.map((x) => `<div class="log-entry">• ${esc(x)}</div>`).join('')}</div>
+      </article>
+    </aside>
+    <section class="center-col">
+      ${phaseBanner}
+      ${center}
+    </section>
+    <aside class="panel chat">
+      ${isSpectator ? '<div class="spectator-banner">👁 Zuschauermodus · Du schaust zu, kannst aber nicht abstimmen.</div>' : ''}
+      <div class="eyebrow">Dorfplatz</div>
+      <div id="messages" class="messages">${state.messages.map((m) => m.system
+        ? `<div class="message system"><span class="msg-icon">◆</span>${esc(m.text)}</div>`
+        : `<div class="message ${m.reaction ? 'reaction' : ''}"><b>${esc(m.name)}:</b> ${esc(m.text)}</div>`).join('')}</div>
+      <div class="send">
+        <input id="chat-input" class="input" maxlength="360" placeholder="Schreibe ins Dorf…">
+        ${button('Senden', 'button', 'send')}
+      </div>
+    </aside>
+  </section>`;
+
   wireRender();
   app.dispatchEvent(new Event('yuwolf:render'));
   updatePhaseTimerDisplay();
 
-  if (chatVal !== undefined && document.querySelector('#chat-input')) {
+  if (chatVal !== undefined && document.querySelector('#chat-input'))
     document.querySelector('#chat-input').value = chatVal;
-  }
-  if (houseRulesVal !== undefined && document.querySelector('#house-rules')) {
+  if (houseRulesVal !== undefined && document.querySelector('#house-rules'))
     document.querySelector('#house-rules').value = houseRulesVal;
-  }
-  if (notesVal !== undefined && document.querySelector('#private-notes textarea')) {
+  if (notesVal !== undefined && document.querySelector('#private-notes textarea'))
     document.querySelector('#private-notes textarea').value = notesVal;
-  }
   if (activeId) {
     const el = document.querySelector('#' + activeId);
     if (el && typeof el.focus === 'function') {
@@ -158,35 +200,119 @@ function render() {
       }
     }
   }
-
   requestAnimationFrame(() => window.scrollTo({ top: previousScroll, behavior: 'auto' }));
 }
-function gameCenter(own, isHost) {
-  const s = state.selection,
-    active = s?.actorIds?.includes(socket.id),
-    targets = s?.targets || [];
+
+/* ─── Role card in sidebar ─── */
+function roleCardSidebar(own) {
+  const r = own.role;
+  let extra = '';
+  if (own.wolfTeam && own.wolfTeam.length > 0) {
+    extra = `<div class="wolf-team-panel">
+      <div class="wolf-team-label">🐺 Dein Rudel</div>
+      ${own.wolfTeam.map((w) => `<span class="wolf-team-member ${!w.alive ? 'dead' : ''}">${esc(w.name)}${!w.alive ? ' ☠' : ''}</span>`).join('')}
+    </div>`;
+  } else if (own.wolfTeam && own.wolfTeam.length === 0) {
+    extra = `<div class="wolf-team-panel"><div class="wolf-team-label">🐺 Du bist allein im Rudel</div></div>`;
+  }
+  if (own.lover) {
+    extra += `<div class="lover-badge">💘 Du bist verliebt</div>`;
+  }
+  return `<div class="rolecard-side">
+    <div class="role-icon-big">${r.icon}</div>
+    <h2 class="role-name">${esc(r.name)}</h2>
+    <p class="role-desc">${esc(r.description)}</p>
+    ${extra}
+  </div>`;
+}
+
+/* ─── Phase Banner ─── */
+function buildPhaseBanner() {
+  if (!state || state.phase === 'lobby' || state.phase === 'ended' || state.phase === 'reveal') return '';
+  const isDay = state.phase === 'day';
+  const phaseIcon = isDay ? '☀' : '☾';
+  const phaseLabel = isDay ? 'Tag' : 'Nacht';
+  const task = state.selection?.task;
+  const TASK_LABELS = {
+    wolf: '🐺 Werwölfe erwachen',
+    seer: '🔮 Seherin erwacht',
+    witch: '⚗️ Hexe erwacht',
+    cupid: '💘 Amor erwacht',
+    guardian: '🛡️ Schutzgeist erwacht',
+    piper: '🎶 Flötenspieler erwacht',
+    vampire: '🧛 Vampir erwacht',
+    thief: '🗝️ Diebin erwacht',
+    doppelganger: '🎭 Doppelgänger erwacht',
+    girl: '👁️ Mädchen erwacht',
+    witchhunter: '🔥 Hexenjäger erwacht',
+    hunter: '🏹 Jäger zielt',
+    waiting: '💤 Die Nacht ist still',
+    day: '☀ Tag beginnt',
+  };
+  const taskLabel = task ? (TASK_LABELS[task] || '') : (isDay ? TASK_LABELS.day : '');
+  return `<div class="phase-banner ${isDay ? 'day' : 'night'}">
+    <span class="phase-icon">${phaseIcon}</span>
+    <span class="phase-num">${phaseLabel} ${state.night}</span>
+    ${taskLabel ? `<span class="phase-sep">·</span><span class="phase-task">${taskLabel}</span>` : ''}
+  </div>`;
+}
+
+/* ─── Lobby Center ─── */
+function lobbyCenter(isHost) {
+  return `<div class="game"><div class="phase">Warte auf das Rudel</div><h1 class="title">${esc(state.name)}</h1>
+    <div class="notice">
+      <h2 class="section-title">Teile diesen Code</h2>
+      <div class="code">${state.code}</div>
+      <p class="muted">${state.private ? 'Private Lobby · Passwort erforderlich' : 'Öffentliche Lobby'} · ${state.players.length}/${state.max} Personen</p>
+      ${isHost ? button('Spiel starten', 'button', 'start') : '<p class="muted">Der Host startet, sobald alle da sind.</p>'}
+      ${isHost ? `<div class="log" style="margin-top:14px;">Aktive Sonderrollen: ${state.settings.roles.map((r) => ({ seer: 'Seherin', witch: 'Hexe', hunter: 'Jäger', cupid: 'Amor' })[r]).join(', ') || 'keine'}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+/* ─── Ended Center ─── */
+function endedCenter() {
+  const voteHistory = state.voteHistory || [];
+  const voteHistoryHtml = voteHistory.length
+    ? `<div class="vote-history-reveal">
+        <div class="eyebrow" style="margin-bottom:10px;">Abstimmungschronik</div>
+        ${voteHistory.map((r) => `<div class="vote-record">
+          <span class="vote-record-round">Tag ${r.round}</span>
+          <div class="vote-record-entries">${r.votes.map((v) => {
+            const voter = state.players.find((p) => p.id === v.voter);
+            const target = state.players.find((p) => p.id === v.target);
+            return `<span>${esc(voter?.name || '?')} → ${esc(target?.name || '?')}</span>`;
+          }).join('')}</div>
+        </div>`).join('')}
+      </div>`
+    : '';
+  return `<div class="game"><div class="phase">Die letzte Nacht ist vorbei</div>
+    <h1 class="title">${esc(state.winner)}</h1>
+    <div class="notice">
+      <p class="muted">Die Rollen werden enthüllt:</p>
+      <div class="choice-grid result-grid">
+        ${state.players.map((p) => `<div class="choice result-card ${p.alive ? 'alive' : 'dead'}">
+          <div class="result-role-icon">${p.role?.icon || '?'}</div>
+          <div class="result-name">${esc(p.name)}</div>
+          <small>${p.role?.name || ''}</small>
+          <small class="${p.alive ? 'alive-tag' : 'dead-tag'}">${p.alive ? '✓ überlebt' : '☠ ausgeschieden'}</small>
+        </div>`).join('')}
+      </div>
+      ${voteHistoryHtml}
+      ${button('Zur Startseite', 'button', 'home')}
+    </div>
+  </div>`;
+}
+
+/* ─── Game Center ─── */
+function gameCenter(own, isHost, isSpectator) {
+  const s = state.selection;
+  const active = s?.actorIds?.includes(socket.id);
+  const targets = s?.targets || [];
+
   const timer = state.timer
     ? `<div class="phase-timer"><span>${state.phase === 'day' ? 'Abstimmung endet in' : 'Entscheidung endet in'}</span><strong id="phase-timer" data-deadline="${state.timer.deadline}">--:--</strong></div>`
     : '';
-  let action = '';
-  if (state.phase === 'day') {
-    action = isHost
-      ? `<p class="muted">Trage nach der Diskussion das Abstimmungsergebnis ein.</p>${targetButtons(targets, 'vote')}${button('Niemand wird verurteilt', 'button secondary', 'skip')}`
-      : '<p class="muted">Diskutiert im Chat. Der Host trägt anschließend das Ergebnis der Abstimmung ein.</p>';
-  } else if (state.phase === 'hunter') {
-    action = active
-      ? `${targetButtons(targets, 'hunter')}${button('Keinen Schuss abgeben', 'button secondary', 'skip')}`
-      : '<p class="muted">Der Jäger entscheidet über seinen letzten Schuss.</p>';
-  } else if (active) {
-    if (s.task === 'cupid')
-      action = `<p class="muted">Wähle zwei Menschen, die miteinander verbunden werden.</p>${targetButtons(targets, 'love')}${button('Herzen verbinden', 'button', 'act')}`;
-    else if (s.task === 'witch')
-      action = `<p class="muted">${state.own?.witch?.heal && state.night ? 'Du kannst heilen oder vergiften.' : ''}</p>${state.own.witch?.heal ? button('Heiltrank verwenden', 'button secondary', 'heal') : ''} ${state.own.witch?.poison ? targetButtons(targets, 'poison') : ''} ${button('Nichts tun', 'button secondary', 'skip')}`;
-    else
-      action = `${targetButtons(targets, 'act')}${button('Nicht handeln', 'button secondary', 'skip')}`;
-  } else
-    action =
-      '<p class="muted">Die Nacht ist still. Warte, bis die anderen Rollen gehandelt haben.</p>';
 
   const TITLE_MAP = {
     day: 'Das Dorf erwacht',
@@ -204,13 +330,122 @@ function gameCenter(own, isHost) {
     witchhunter: 'Der Hexenjäger erwacht',
     waiting: 'Die Nacht ist still',
   };
-  const titleText =
-    state.phase === 'night'
-      ? TITLE_MAP[s?.task] || 'Die Nacht ist still'
-      : TITLE_MAP[state.phase] || 'YuWolf';
+  const titleText = state.phase === 'night'
+    ? TITLE_MAP[s?.task] || 'Die Nacht ist still'
+    : TITLE_MAP[state.phase] || 'YuWolf';
 
-  return `<div class="game"><div class="phase">${state.phase === 'day' ? '☀ Tag' : '☾ Nacht'} ${state.night}</div>${timer}<h1 class="title">${titleText}</h1><div class="notice"><p>${esc(s?.text || '')}</p>${vision ? `<div class="rolecard"><div class="icon">${vision.role.icon}</div><h2>${vision.name} ist ${vision.role.name}</h2><p>Dieses Wissen gehört nur dir.</p></div>` : ''}${action}</div></div>`;
+  let action = '';
+  if (isSpectator) {
+    action = buildSpectatorView(s);
+  } else if (state.phase === 'day') {
+    action = buildDayVoteAction(targets, isHost);
+  } else if (state.phase === 'hunter') {
+    action = active
+      ? `<p class="action-hint">Du wirst sterben – nimm jemanden mit dir.</p>${targetButtons(targets, 'hunter')}${button('Keinen Schuss abgeben', 'button secondary', 'skip')}`
+      : '<div class="waiting-card"><span>🏹</span><p>Der Jäger entscheidet über seinen letzten Schuss.</p></div>';
+  } else if (active) {
+    if (s.task === 'wolf') action = buildWolfAction(targets, own);
+    else if (s.task === 'cupid')
+      action = `<p class="action-hint">Wähle zwei Menschen, die miteinander verbunden werden.</p>${targetButtons(targets, 'love')}${button('Herzen verbinden', 'button', 'act')}`;
+    else if (s.task === 'witch')
+      action = `<p class="action-hint">${own?.witch?.heal && state.night ? 'Du kannst heilen oder vergiften.' : ''}</p>${own.witch?.heal ? button('Heiltrank verwenden', 'button secondary', 'heal') : ''} ${own.witch?.poison ? targetButtons(targets, 'poison') : ''} ${button('Nichts tun', 'button secondary', 'skip')}`;
+    else
+      action = `${targetButtons(targets, 'act')}${button('Nicht handeln', 'button secondary', 'skip')}`;
+  } else {
+    action = `<div class="waiting-card"><span>💤</span><p>Die Nacht ist still. Warte, bis die anderen Rollen gehandelt haben.</p></div>`;
+  }
+
+  return `<div class="game">
+    <h1 class="title">${titleText}</h1>
+    ${timer}
+    <div class="notice">
+      <p class="notice-text">${esc(s?.text || '')}</p>
+      ${vision ? `<div class="vision-card"><div class="icon">${vision.role.icon}</div><h2>${esc(vision.name)} ist ${esc(vision.role.name)}</h2><p>Dieses Wissen gehört nur dir.</p></div>` : ''}
+      ${action}
+    </div>
+  </div>`;
 }
+
+/* ─── Spectator view ─── */
+function buildSpectatorView(s) {
+  if (state.phase === 'day') {
+    const targets = state.selection?.targets || [];
+    const totalVoters = state.players.filter((p) => p.alive).length;
+    const votedCount = state.vote?.count || 0;
+    return `<div class="spectator-vote-view">
+      <p class="action-hint">Abstimmung läuft – Du beobachtest als Zuschauer.</p>
+      <div class="vote-progress-bar">
+        <span class="vote-progress-fill" style="width:${totalVoters > 0 ? (votedCount / totalVoters) * 100 : 0}%"></span>
+      </div>
+      <p class="muted" style="font-size:12px;margin:6px 0 16px;">${votedCount} von ${totalVoters} haben abgestimmt</p>
+      <div class="choice-grid">
+        ${targets.map((t) => {
+          const count = state.vote?.tally?.[t.id] || 0;
+          return `<div class="choice spectator-choice"><span>${esc(t.name)}</span>${count > 0 ? `<span class="vote-count">${count}</span>` : ''}</div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+  return `<div class="waiting-card"><span>👁</span><p>Du beobachtest das Spielgeschehen. Viel Spaß beim Zuschauen!</p></div>`;
+}
+
+/* ─── Day Vote Action ─── */
+function buildDayVoteAction(targets, isHost) {
+  const totalVoters = state.players.filter((p) => p.alive).length;
+  const votedCount = state.vote?.count || 0;
+  const hasCast = state.vote?.cast || false;
+  const myTarget = state.vote?.myTarget || null;
+
+  const progressBar = `<div class="vote-progress-wrap">
+    <div class="vote-progress-bar">
+      <span class="vote-progress-fill" style="width:${totalVoters > 0 ? (votedCount / totalVoters) * 100 : 0}%"></span>
+    </div>
+    <span class="vote-progress-label">${votedCount} von ${totalVoters} haben abgestimmt</span>
+  </div>`;
+
+  if (hasCast) {
+    const myTargetName = targets.find((t) => t.id === myTarget)?.name || '?';
+    return `${progressBar}
+      <div class="vote-cast-confirm">
+        <span class="vote-cast-icon">✓</span>
+        <p>Du hast für <strong>${esc(myTargetName)}</strong> gestimmt.</p>
+        <p class="muted" style="font-size:12px;">Abstimmung ist anonym – Ergebnis nach der Auflösung.</p>
+      </div>
+      <div class="choice-grid anon-vote-grid">
+        ${targets.map((t) => {
+          const count = state.vote?.tally?.[t.id] || 0;
+          return `<div class="choice ${t.id === myTarget ? 'selected' : ''}"><span>${esc(t.name)}</span>${count > 0 ? `<span class="vote-count">${count}</span>` : ''}</div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  return `${progressBar}
+    <p class="action-hint">Wähle, wen du für schuldig hältst. Deine Stimme ist anonym.</p>
+    ${targetButtons(targets, 'vote')}
+    ${isHost ? button('Niemand wird verurteilt', 'button secondary', 'skip') : ''}`;
+}
+
+/* ─── Wolf Action ─── */
+function buildWolfAction(targets, own) {
+  const s = state.selection;
+  const totalWolves = s?.wolfTotalCount || 1;
+  const votedWolves = s?.wolfVotedCount || 0;
+  const hasCast = s?.wolfVoteCast || false;
+  const myTarget = s?.wolfMyTarget || null;
+
+  const wolfProgressBar = `<div class="wolf-vote-progress">
+    <div class="vote-progress-bar wolf-bar">
+      <span class="vote-progress-fill" style="width:${totalWolves > 0 ? (votedWolves / totalWolves) * 100 : 0}%"></span>
+    </div>
+    <span class="vote-progress-label">${votedWolves} von ${totalWolves} Wölfen haben abgestimmt</span>
+  </div>`;
+
+  return `<p class="action-hint">Wählt gemeinsam ein Opfer. Eure Abstimmung ist für das Rudel sichtbar.</p>
+    ${wolfProgressBar}
+    ${targetButtons(targets, 'act')}`;
+}
+
+/* ─── Target Buttons ─── */
 function targetButtons(targets, type) {
   return `<div class="choice-grid">${targets
     .map((target) => {
@@ -220,12 +455,15 @@ function targetButtons(targets, type) {
           : type === 'act' && state.selection?.task === 'wolf'
             ? state.selection.wolfMyTarget === target.id
             : selected === target.id;
+
       const voteCount = type === 'vote' ? state.vote?.tally?.[target.id] || 0 : null;
       const wolfVoteCount =
         type === 'act' && state.selection?.task === 'wolf'
           ? state.selection.wolfVotes?.[target.id] || 0
           : null;
       const count = voteCount ?? wolfVoteCount;
+
+      // Wolf voters: show who voted for this target (only for wolf task)
       const wolfVoters =
         type === 'act' && state.selection?.task === 'wolf'
           ? state.selection.wolfVoters?.[target.id] || []
@@ -233,17 +471,62 @@ function targetButtons(targets, type) {
       const votersMarkup = wolfVoters.length
         ? `<div class="wolf-voters-list">${wolfVoters.map((v) => `<span class="wolf-voter-tag">🐺 ${esc(v)}</span>`).join('')}</div>`
         : '';
-      return `<button class="choice ${isSelected ? 'selected' : ''}" data-target="${target.id}" data-type="${type}"><div>${esc(target.name)}${count !== null ? `<span class="vote-count">${count}</span>` : ''}</div>${votersMarkup}</button>`;
+
+      // For day voting: only show count, no voter names (anonymous)
+      const voteBar = type === 'vote' && count !== null && count > 0
+        ? `<div class="anon-vote-bar" style="width:${Math.min(count * 20, 100)}%"></div>`
+        : '';
+
+      return `<button class="choice ${isSelected ? 'selected' : ''} ${type === 'vote' ? 'vote-choice' : ''}" data-target="${target.id}" data-type="${type}">
+        <div class="choice-name">${esc(target.name)}${count !== null && count > 0 ? `<span class="vote-count">${count}</span>` : ''}</div>
+        ${voteBar}
+        ${votersMarkup}
+      </button>`;
     })
     .join('')}</div>`;
 }
+
+/* ─── Reveal Ceremony ─── */
 function revealCeremony() {
   if (state.revealDone)
-    return `<div class="game ceremony-ready"><div class="phase">Kartenzeremonie</div><h1 class="title">Du bist bereit.</h1><div class="notice"><div class="ready-seal">✦</div><p class="muted">Deine Schicksalskarte ist wieder sicher verborgen.</p><p class="ceremony-count"><strong>${state.revealedCount}</strong> von ${state.players.length} Personen sind bereit</p><div class="ready-progress"><span style="width:${(state.revealedCount / state.players.length) * 100}%"></span></div><p class="muted small">Die Nacht beginnt automatisch, sobald alle ihre Karte geschlossen haben.</p></div></div>`;
+    return `<div class="game ceremony-ready">
+      <div class="phase">Kartenzeremonie</div>
+      <h1 class="title">Du bist bereit.</h1>
+      <div class="notice">
+        <div class="ready-seal">✦</div>
+        <p class="muted">Deine Schicksalskarte ist wieder sicher verborgen.</p>
+        <p class="ceremony-count"><strong>${state.revealedCount}</strong> von ${state.players.length} Personen sind bereit</p>
+        <div class="ready-progress"><span style="width:${(state.revealedCount / state.players.length) * 100}%"></span></div>
+        <p class="muted small">Die Nacht beginnt automatisch, sobald alle ihre Karte geschlossen haben.</p>
+      </div>
+    </div>`;
   const r = state.own.role;
   const roleKey = r.name.toLowerCase().replace('ä', 'a');
-  return `<div class="game reveal"><div class="phase">Kartenzeremonie · Nur für deine Augen</div><h1 class="title">Dein Schicksal wartet.</h1><p class="muted">Achte darauf, dass niemand auf deinen Bildschirm sieht.</p><button id="destiny-card" class="destiny-card ${cardOpen ? 'is-open' : ''}" aria-label="Schicksalskarte umdrehen"><span class="card-face card-back"><span class="card-corner">✦</span><span class="rune">☾</span><b>YuWolf</b><small>YU’S DÜSTERWALD</small><span class="tap-hint">Antippen zum Aufdecken</span></span><span class="card-face card-front role-${roleKey}"><span class="role-constellation">✦ ✧ ✦</span><span class="card-art">${r.icon}</span><span class="card-name">${esc(r.name)}</span><span class="card-copy">${esc(r.description)}</span><span class="card-team">${r.team === 'wolf' ? 'Rudel der Nacht' : 'Dorf von Yu'}</span></span></button><p class="muted card-instruction">${cardOpen ? 'Noch einmal tippen: Karte schließen und bereit melden.' : 'Deine Karte ist verdeckt und nur für dich bestimmt.'}</p></div>`;
+  return `<div class="game reveal">
+    <div class="phase">Kartenzeremonie · Nur für deine Augen</div>
+    <h1 class="title">Dein Schicksal wartet.</h1>
+    <p class="muted">Achte darauf, dass niemand auf deinen Bildschirm sieht.</p>
+    <button id="destiny-card" class="destiny-card ${cardOpen ? 'is-open' : ''}" aria-label="Schicksalskarte umdrehen">
+      <span class="card-face card-back">
+        <span class="card-corner">✦</span>
+        <span class="rune">☾</span>
+        <b>YuWolf</b>
+        <small>YU'S DÜSTERWALD</small>
+        <span class="tap-hint">Antippen zum Aufdecken</span>
+      </span>
+      <span class="card-face card-front role-${roleKey}">
+        <span class="role-constellation">✦ ✧ ✦</span>
+        <span class="card-art">${r.icon}</span>
+        <span class="card-name">${esc(r.name)}</span>
+        <span class="card-copy">${esc(r.description)}</span>
+        <span class="card-team">${r.team === 'wolf' ? 'Rudel der Nacht' : 'Dorf von Yu'}</span>
+      </span>
+    </button>
+    <p class="muted card-instruction">${cardOpen ? 'Noch einmal tippen: Karte schließen und bereit melden.' : 'Deine Karte ist verdeckt und nur für dich bestimmt.'}</p>
+  </div>`;
 }
+
+/* ─── Wire Events ─── */
 function wireRender() {
   document.querySelector('#start')?.addEventListener('click', () => socket.emit('game:start'));
   document.querySelector('#home')?.addEventListener('click', () => landing());
@@ -296,6 +579,7 @@ function wireRender() {
   const messages = document.querySelector('#messages');
   if (messages) messages.scrollTop = messages.scrollHeight;
 }
+
 function sendChat() {
   const e = document.querySelector('#chat-input');
   if (e?.value.trim()) {
@@ -311,9 +595,13 @@ function appendChatMessages() {
   const fragment = document.createDocumentFragment();
   pendingChatMessages.splice(0).forEach((message) => {
     const row = document.createElement('div');
-    row.className = message.system ? 'message system' : 'message';
-    if (message.system) row.textContent = message.text;
-    else {
+    row.className = message.system ? 'message system' : `message${message.reaction ? ' reaction' : ''}`;
+    if (message.system) {
+      const icon = document.createElement('span');
+      icon.className = 'msg-icon';
+      icon.textContent = '◆';
+      row.append(icon, document.createTextNode(message.text));
+    } else {
       const name = document.createElement('b');
       name.textContent = `${message.name}: `;
       row.append(name, document.createTextNode(message.text));
@@ -335,15 +623,15 @@ function updatePhaseTimerDisplay() {
   const deadline = Number(display.dataset.deadline);
   const update = () => {
     const seconds = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
-    display.textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(
-      seconds % 60,
-    ).padStart(2, '0')}`;
+    display.textContent = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
     display.closest('.phase-timer')?.classList.toggle('is-ending', seconds <= 10);
     if (seconds === 0) clearPhaseTimerDisplay();
   };
   update();
   timerInterval = setInterval(update, 250);
 }
+
+/* ─── Socket Events ─── */
 socket.on('connect', () => (connection.textContent = '● Verbunden'));
 socket.on('disconnect', () => (connection.textContent = '○ Verbindung verloren'));
 socket.on('app:error', (message) => {
@@ -351,7 +639,7 @@ socket.on('app:error', (message) => {
   document
     .querySelectorAll('#create, #join')
     .forEach((buttonElement) => buttonElement.removeAttribute('disabled'));
-  toast(message);
+  toast(message, 'error');
 });
 socket.on('lobby:list', (list) => {
   if (!state) renderList(list);
