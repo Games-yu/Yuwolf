@@ -201,13 +201,24 @@ function leaveLobby(socket, l) {
     if (l.revealed?.size >= l.players.length) return beginNight(l);
   } else if (l.phase === 'night') {
     if (checkWinner(l)) return setPhase(l, 'ended');
-    return beginNight(l);
+    // If the active role disconnected, skip to next task, otherwise just broadcast
+    const task = l.tasks?.[l.taskIndex];
+    if (task) {
+      const actors = alive(l).filter((p) => p.role === task);
+      if (!actors.length || !actors.some((p) => p.connected)) {
+        l.taskIndex++;
+        return nextTask(l);
+      }
+    }
   } else if (l.phase === 'day') {
     if (checkWinner(l)) return setPhase(l, 'ended');
-    return dayVote(l);
+    if (l.votes) l.votes.delete(socket.id);
   } else if (l.phase === 'hunter') {
-    l.hunter = null;
-    return beginNight(l);
+    if (l.hunter === socket.id) {
+      l.hunter = null;
+      const nextFn = l.selection?.next || (() => beginNight(l));
+      return afterDeaths(l, nextFn);
+    }
   }
   broadcast(l);
 }
@@ -484,6 +495,7 @@ function kill(l, id, reason) {
     if (lover?.alive) {
       lover.alive = false;
       system(l, `${lover.name} stirbt an gebrochenem Herzen.`);
+      if (lover.role === 'hunter') l.hunter = lover.id;
     }
   }
   if (p.role === 'hunter') l.hunter = p.id;
