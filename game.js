@@ -126,7 +126,19 @@ function render() {
   pendingChatMessages.length = 0;
   const own = state.own,
     isHost = state.hostId === socket.id;
-  const isSpectator = own && !own.alive;
+  // Dead hunter MUST still see their action – they are NOT a spectator during hunter phase
+  const isHunterActing = state.phase === 'hunter' && state.selection?.actorIds?.includes(socket.id);
+  const isSpectator = own && !own.alive && !isHunterActing;
+
+  // Detect phase change to 'ended' for end-game popup
+  const wasEnded = render._lastPhase === 'ended';
+  if (state.phase === 'ended' && !wasEnded) {
+    render._lastPhase = 'ended';
+    // Show end-game popup after short delay so render finishes first
+    setTimeout(() => showGameEndModal(state.winner, state.players, state.own), 400);
+  } else if (state.phase !== 'ended') {
+    render._lastPhase = state.phase;
+  }
 
   const everyone = state.players
     .map((p) => {
@@ -374,10 +386,19 @@ function gameCenter(own, isHost, isSpectator) {
     action = `<div class="waiting-card"><span>💤</span><p>Die Nacht ist still. Warte, bis die anderen Rollen gehandelt haben.</p></div>`;
   }
 
+  // Mini-Eventlog for mobile/center visibility
+  const recentLogs = state.log.slice(-2);
+  const miniLogHtml = recentLogs.length > 0
+    ? `<div class="mini-eventlog">
+         ${recentLogs.map((x) => `<div>• ${esc(x)}</div>`).join('')}
+       </div>`
+    : '';
+
   return `<div class="game">
     <h1 class="title">${titleText}</h1>
     ${timer}
     <div class="notice">
+      ${miniLogHtml}
       <p class="notice-text">${esc(s?.text || '')}</p>
       ${vision ? `<div class="vision-card"><div class="icon">${vision.role.icon}</div><h2>${esc(vision.name)} ist ${esc(vision.role.name)}</h2><p>Dieses Wissen gehört nur dir.</p></div>` : ''}
       ${action}
@@ -402,6 +423,31 @@ function buildSpectatorView(s) {
           const count = state.vote?.tally?.[t.id] || 0;
           return `<div class="choice spectator-choice"><span>${esc(t.name)}</span>${count > 0 ? `<span class="vote-count">${count}</span>` : ''}</div>`;
         }).join('')}
+      </div>
+    </div>`;
+  }
+  // Night spectator view: show who is currently acting
+  const NIGHT_TASK_NAMES = {
+    wolf: { icon: '🐺', label: 'Die Werwölfe erwachen' },
+    seer: { icon: '🔮', label: 'Die Seherin erwacht' },
+    witch: { icon: '⚗️', label: 'Die Hexe erwacht' },
+    cupid: { icon: '💘', label: 'Amor erwacht' },
+    guardian: { icon: '🛡️', label: 'Der Schutzgeist erwacht' },
+    piper: { icon: '🎶', label: 'Der Flötenspieler erwacht' },
+    vampire: { icon: '🧛', label: 'Der Vampir erwacht' },
+    thief: { icon: '🗝️', label: 'Die Diebin erwacht' },
+    doppelganger: { icon: '🎭', label: 'Der Doppelgänger erwacht' },
+    girl: { icon: '👁️', label: 'Das Mädchen schaut' },
+    witchhunter: { icon: '🔥', label: 'Der Hexenjäger erwacht' },
+    waiting: { icon: '💤', label: 'Die Nacht ist still…' },
+  };
+  const taskInfo = s?.task ? NIGHT_TASK_NAMES[s.task] : null;
+  if (taskInfo) {
+    return `<div class="night-actor-banner">
+      <span class="night-actor-icon">${taskInfo.icon}</span>
+      <div>
+        <div class="night-actor-label">${taskInfo.label}</div>
+        <div class="night-actor-sub">Warte, bis die Nacht vorbei ist.</div>
       </div>
     </div>`;
   }
@@ -438,12 +484,30 @@ function buildDayVoteAction(targets, isHost) {
       </div>`;
   }
 
-  // Players cannot vote for themselves
-  const voteTargets = targets.filter((t) => t.id !== socket.id);
+  // Players cannot vote for themselves – render self as greyed-out, non-clickable
+  const voteGridItems = targets.map((t) => {
+    const isSelf = t.id === socket.id;
+    if (isSelf) {
+      // Show self but make it non-interactive
+      return `<div class="choice vote-self-disabled" title="Du kannst nicht für dich selbst stimmen">
+        <span>${esc(t.name)}</span>
+        <span class="self-tag">Ich</span>
+      </div>`;
+    }
+    const count = state.vote?.tally?.[t.id] || 0;
+    const voteBar = count > 0
+      ? `<div class="anon-vote-bar" style="width:${Math.min(count * 20, 100)}%"></div>`
+      : '';
+    return `<button class="choice vote-choice" data-target="${t.id}" data-type="vote">
+      <span>${esc(t.name)}</span>
+      ${count > 0 ? `<span class="vote-count">${count}</span>` : ''}
+      ${voteBar}
+    </button>`;
+  }).join('');
 
   return `${progressBar}
     <p class="action-hint">Wähle, wen du für schuldig hältst. Deine Stimme ist anonym.</p>
-    ${targetButtons(voteTargets, 'vote')}
+    <div class="choice-grid">${voteGridItems}</div>
     ${isHost ? button('Niemand wird verurteilt', 'button secondary', 'skip') : ''}`;
 }
 
@@ -600,6 +664,31 @@ function wireRender() {
   });
   const messages = document.querySelector('#messages');
   if (messages) messages.scrollTop = messages.scrollHeight;
+
+  // Disable chat and reactions for dead players during active game
+  const chatInput = document.querySelector('#chat-input');
+  const sendBtn = document.querySelector('#send');
+  const reactionBar = document.querySelector('#reaction-bar');
+  const isDead = state?.own && !state.own.alive;
+  const isActiveGame = state?.phase !== 'lobby' && state?.phase !== 'ended';
+  if (isDead && isActiveGame) {
+    if (chatInput) {
+      chatInput.disabled = true;
+      chatInput.placeholder = '💀 Tote können nicht schreiben';
+      chatInput.title = 'Du bist ausgeschieden und kannst nicht mehr chatten';
+    }
+    if (sendBtn) sendBtn.disabled = true;
+    if (reactionBar) reactionBar.style.opacity = '0.3';
+    if (reactionBar) reactionBar.style.pointerEvents = 'none';
+  } else {
+    if (chatInput) {
+      chatInput.disabled = false;
+      chatInput.placeholder = 'Schreibe ins Dorf\u2026';
+      chatInput.title = '';
+    }
+    if (sendBtn) sendBtn.disabled = false;
+    if (reactionBar) { reactionBar.style.opacity = ''; reactionBar.style.pointerEvents = ''; }
+  }
 }
 
 function sendChat() {
@@ -720,4 +809,41 @@ function showPrivateResult(result) {
   document.body.append(modal);
   close.focus();
 }
+function showGameEndModal(winner, players, own) {
+  document.querySelector('#game-end-modal')?.remove();
+  const modal = document.createElement('section');
+  modal.id = 'game-end-modal';
+  modal.className = 'game-end-modal';
+  const isWolfWin = winner?.toLowerCase().includes('werwölfe');
+  const isVillageWin = winner?.toLowerCase().includes('dorf');
+  const themeClass = isWolfWin ? 'wolf-win' : (isVillageWin ? 'village-win' : 'other-win');
+
+  const content = document.createElement('div');
+  content.className = `game-end-content ${themeClass}`;
+  
+  const title = document.createElement('h1');
+  title.className = 'game-end-title';
+  title.textContent = winner || 'Das Spiel ist vorbei';
+  
+  const subtitle = document.createElement('p');
+  subtitle.className = 'game-end-subtitle';
+  subtitle.textContent = own?.alive ? 'Du hast überlebt!' : 'Du bist ausgeschieden.';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'button game-end-close';
+  closeBtn.textContent = 'Ergebnisse ansehen';
+  closeBtn.onclick = () => {
+    modal.classList.add('fade-out');
+    setTimeout(() => modal.remove(), 400);
+  };
+
+  content.append(title, subtitle, closeBtn);
+  modal.append(content);
+  document.body.append(modal);
+
+  // Trigger animation frame for CSS transition
+  requestAnimationFrame(() => modal.classList.add('visible'));
+}
+
 landing();

@@ -1155,6 +1155,88 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
 .card-wait { font: 80px Cinzel, serif; color: var(--gold); padding: 35px; animation: glow 1.6s infinite alternate; }
 @keyframes glow { to { text-shadow: 0 0 25px var(--gold); } }
 
+/* Vote self disabled */
+.vote-self-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #1a1e2d;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.vote-self-disabled .self-tag {
+  font-size: 10px;
+  background: #2a2e40;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--muted);
+}
+
+/* Night actor banner */
+.night-actor-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: linear-gradient(145deg, #161a29, #0e1220);
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  margin: 16px 0;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+.night-actor-icon { font-size: 32px; filter: drop-shadow(0 0 8px var(--gold)); }
+.night-actor-label { font-size: 16px; font-weight: 700; color: var(--gold); margin-bottom: 4px; }
+.night-actor-sub { font-size: 13px; color: var(--muted); }
+
+/* Mini eventlog (Mobile) */
+.mini-eventlog {
+  display: none;
+  background: #111422;
+  border-left: 2px solid var(--gold);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #c9ccd6;
+}
+@media (max-width: 600px) { .mini-eventlog { display: block; } }
+
+/* Game End Modal */
+.game-end-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 6, 12, 0.95);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.game-end-modal.visible { opacity: 1; }
+.game-end-modal.fade-out { opacity: 0; }
+.game-end-content {
+  text-align: center;
+  padding: 40px;
+  border-radius: 20px;
+  background: linear-gradient(to bottom, #151926, #090b12);
+  border: 1px solid #333;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+  transform: translateY(20px) scale(0.95);
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.game-end-modal.visible .game-end-content { transform: translateY(0) scale(1); }
+.game-end-title { font-family: Cinzel, serif; font-size: 42px; margin: 0 0 10px; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+.game-end-subtitle { font-size: 16px; color: var(--muted); margin-bottom: 30px; }
+.game-end-close { padding: 12px 24px; font-size: 15px; }
+
+/* Theme specific game end styles */
+.game-end-content.wolf-win { border-color: var(--wolf-red); box-shadow: 0 10px 40px rgba(229, 77, 77, 0.2); }
+.game-end-content.wolf-win .game-end-title { color: var(--wolf-red); }
+.game-end-content.village-win { border-color: var(--gold); box-shadow: 0 10px 40px rgba(229, 189, 104, 0.2); }
+.game-end-content.village-win .game-end-title { color: var(--gold); }
+
 /* ════════════════════════════════════════════════
    RESPONSIVE
    ════════════════════════════════════════════════ */

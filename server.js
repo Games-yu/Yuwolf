@@ -606,6 +606,13 @@ function resolveVotes(l) {
     return setPhase(l, 'ended');
   }
   kill(l, winner, `wurde mit ${votes} Stimme${votes === 1 ? '' : 'n'} verurteilt`);
+  // Notify the eliminated player with a personal popup
+  io.to(winner).emit('game:privateResult', {
+    title: 'Du wurdest verurteilt!',
+    icon: '⚖️',
+    text: `Das Dorf hat dich mit ${votes} Stimme${votes === 1 ? '' : 'n'} verurteilt. Du scheidest als Zuschauer weiter.`,
+    theme: 'is-wolf',
+  });
   afterDeaths(l, () => beginNight(l));
 }
 io.on('connection', (socket) => {
@@ -762,7 +769,10 @@ io.on('connection', (socket) => {
     const l = lobbyFor(socket),
       p = l && find(l, socket.id),
       text = cleanText(raw, 360);
+    // Dead players cannot use chat during game
     if (!l || !p || !text) return;
+    if (l.phase !== 'lobby' && l.phase !== 'ended' && !p.alive)
+      return error(socket, 'Tote können nicht im Chat schreiben.');
     const now = Date.now();
     if (socket.data.lastChat && now - socket.data.lastChat < 450)
       return error(socket, 'Warte einen Moment, bevor du erneut schreibst.');
@@ -774,7 +784,9 @@ io.on('connection', (socket) => {
   socket.on('chat:reaction', (emoji) => {
     const l = lobbyFor(socket);
     const player = l && find(l, socket.id);
-    if (!l || !player || !['🕵️', '⚑', '😱', '👏', '🤔'].includes(emoji)) return;
+    // Dead players cannot react during game
+    if (!l || !player || (l.phase !== 'lobby' && l.phase !== 'ended' && !player.alive)) return;
+    if (!['🕵️', '⚑', '😱', '👏', '🤔'].includes(emoji)) return;
     const now = Date.now();
     if (socket.data.lastReaction && now - socket.data.lastReaction < 700) return;
     socket.data.lastReaction = now;
