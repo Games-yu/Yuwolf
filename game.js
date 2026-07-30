@@ -150,7 +150,7 @@ function render() {
 
   app.innerHTML = `<section class="room">
     <aside class="side">
-      <article class="panel">
+      <article class="panel players-panel">
         <div class="eyebrow">Lobby-Code</div>
         <div class="code">${state.code}</div>
         <ul class="players">${everyone}</ul>
@@ -159,7 +159,7 @@ function render() {
         <div class="eyebrow">Deine geheime Rolle</div>
         ${own?.role ? roleCardSidebar(own) : '<p class="muted">Die Rollen werden beim Start verteilt.</p>'}
       </article>
-      <article class="panel">
+      <article class="panel log-panel">
         <div class="eyebrow">Chronik</div>
         <div class="log">${state.log.map((x) => `<div class="log-entry">• ${esc(x)}</div>`).join('')}</div>
       </article>

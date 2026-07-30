@@ -44,21 +44,24 @@ body {
 /* ════════════════════════════════════════════════
    LAYOUT – FULL-VIEWPORT (no scrolling on desktop)
    ════════════════════════════════════════════════ */
-html, body { height: 100%; }
+html, body { height: 100%; min-height: 0; }
 
 header {
-  height: 62px;
+  height: 56px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 clamp(16px, 4vw, 60px);
+  padding: 0 clamp(12px, 3vw, 48px);
   border-bottom: 1px solid var(--line);
-  background: #07080d66;
-  backdrop-filter: blur(12px);
+  background: #07080d88;
+  backdrop-filter: blur(14px);
   position: sticky;
   top: 0;
   z-index: 40;
   flex-shrink: 0;
+  /* Never let header grow due to wrapped buttons */
+  overflow: hidden;
 }
 
 .brand {
@@ -82,60 +85,72 @@ header {
 #app {
   max-width: 1400px;
   margin: auto;
-  padding: 20px 20px 28px;
+  padding: 16px 16px 20px;
 }
 
 /* ─── Room: 3-column, fills remaining height ─── */
 .room {
   display: grid;
-  grid-template-columns: minmax(220px, 260px) 1fr minmax(280px, 320px);
-  gap: 16px;
-  height: calc(100dvh - 62px - 48px); /* header + padding */
+  grid-template-columns: minmax(200px, 250px) 1fr minmax(260px, 310px);
+  gap: 14px;
+  /* 56px header + 16px top-pad + 20px bottom-pad = 92px */
+  height: calc(100dvh - 56px - 36px);
   align-items: stretch;
+  min-height: 0;
 }
 
-/* Left sidebar – scrollable internally */
+/* Left sidebar – scrollable internally, never grows room */
 .side {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   overflow-y: auto;
   overflow-x: hidden;
+  min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: #ffffff20 transparent;
+}
+/* Panels inside side must NOT flex-shrink to 0 forever,
+   but also must not force the side to grow past room height */
+.side > .panel {
+  flex-shrink: 0;
 }
 
 /* Center column – scrollable */
 .center-col {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   overflow-y: auto;
   overflow-x: hidden;
+  min-height: 0;
   scrollbar-width: thin;
   scrollbar-color: #ffffff20 transparent;
 }
 
-/* Right sidebar: chat, fixed height, flex column */
+/* Right column: chat, fills row height exactly */
 .chat {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border-radius: var(--radius) !important;
-  height: 100%;
   min-height: 0;
+  /* On desktop grid, stretch to fill the cell */
+  height: 100%;
 }
 .messages {
-  flex: 1;
+  flex: 1 1 0;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 8px 4px 8px 0;
+  gap: 4px;
+  padding: 6px 2px 6px 0;
   scrollbar-width: thin;
   scrollbar-color: #ffffff20 transparent;
   min-height: 0;
+  /* Force messages to scroll, never expand parent */
+  max-height: 100%;
 }
 
 /* ════════════════════════════════════════════════
@@ -145,9 +160,12 @@ header {
   background: linear-gradient(145deg, #1c2035ee, #11141fdd);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 16px;
   box-shadow: 0 8px 40px #0006;
   flex-shrink: 0;
+  /* Prevent panels from overflowing their containers */
+  min-width: 0;
+  min-height: 0;
 }
 
 /* ════════════════════════════════════════════════
@@ -443,11 +461,17 @@ header {
 }
 .players {
   padding: 0;
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
+  /* KEY FIX: player list must scroll, never grow the panel */
+  max-height: 200px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #ffffff18 transparent;
 }
 .players li {
   display: flex;
@@ -487,6 +511,11 @@ header {
    ROLE CARD SIDEBAR
    ════════════════════════════════════════════════ */
 .rolecard-panel { flex-shrink: 0; }
+/* Players panel: overflow hidden so .players list scrolls inside */
+.players-panel { overflow: hidden; flex-shrink: 0; }
+/* Log panel: bounded so it doesn't push sidebar taller than room */
+.log-panel { overflow: hidden; flex-shrink: 0; }
+.log-panel .log { max-height: 140px; }
 .rolecard-side { text-align: center; }
 .role-icon-big { font-size: 48px; margin-bottom: 6px; }
 .role-name {
@@ -1083,21 +1112,27 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
 .host-moderation button span { color: #e58a8a; font-size: 10px; text-transform: uppercase; }
 .host-moderation button:hover { border-color: #ca6970; }
 
-/* Reaction bar */
+/* Reaction bar – compact, never wraps */
 .chat #reaction-bar {
   display: flex;
-  gap: 5px;
+  gap: 4px;
   flex-shrink: 0;
-  padding: 6px 0 4px;
+  padding: 4px 0 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
 }
+.chat #reaction-bar::-webkit-scrollbar { display: none; }
 .chat #reaction-bar button {
   border: 1px solid #ffffff1d;
-  border-radius: 6px;
+  border-radius: 5px;
   background: #141826;
-  padding: 4px 6px;
+  padding: 3px 5px;
   cursor: pointer;
   transition: border-color 0.15s, transform 0.1s;
-  font-size: 14px;
+  font-size: 13px;
+  flex-shrink: 0;
+  line-height: 1;
 }
 .chat #reaction-bar button:hover { border-color: var(--gold); transform: translateY(-1px); }
 
@@ -1108,50 +1143,163 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
 /* ════════════════════════════════════════════════
    RESPONSIVE
    ════════════════════════════════════════════════ */
+
+/* ── Large desktop 1200px+ uses base styles (3-col, full height) ── */
+
+/* ── Medium desktop / laptop ── */
 @media (max-width: 1100px) {
   .room {
-    grid-template-columns: minmax(200px, 240px) 1fr minmax(240px, 280px);
-    height: calc(100dvh - 62px - 40px);
-    gap: 12px;
-  }
-}
-
-@media (max-width: 880px) {
-  .room {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto 1fr auto;
-    height: auto;
-  }
-  .side { grid-column: 1 / 2; grid-row: 1; overflow: visible; }
-  .center-col { grid-column: 2 / 3; grid-row: 1 / 3; overflow: visible; }
-  .chat { grid-column: 1 / -1; grid-row: 3; height: 350px; }
-}
-
-@media (max-width: 640px) {
-  #app { padding: 12px 12px 24px; }
-  .room {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto;
+    grid-template-columns: minmax(190px, 230px) 1fr minmax(240px, 280px);
+    height: calc(100dvh - 56px - 36px);
     gap: 10px;
-    height: auto;
   }
-  .side { grid-column: auto; overflow: visible; }
-  .center-col { grid-column: auto; overflow: visible; }
-  .chat { grid-column: auto; height: 340px; }
+}
+
+/* ── Tablet: 2-col, auto height ── */
+@media (max-width: 860px) {
+  #app { padding: 12px 14px 20px; }
+  .room {
+    grid-template-columns: minmax(200px, 1fr) minmax(0, 1.4fr);
+    grid-template-rows: auto auto;
+    height: auto;
+    gap: 10px;
+    /* no fixed height on tablet */
+  }
+  .side {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+    overflow-y: visible;
+    max-height: none;
+  }
+  .center-col {
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+    overflow-y: visible;
+  }
+  .chat {
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+    height: 300px;
+    min-height: 300px;
+  }
+  /* On tablet, player list can be a bit taller */
+  .players { max-height: 160px; }
+}
+
+/* ── Mobile: SINGLE column, everything stacked ── */
+@media (max-width: 600px) {
+  #app { padding: 8px 10px 16px; }
+
+  /* Reset all grid placement explicitly */
+  .room {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    gap: 8px;
+  }
+  .side, .center-col, .chat {
+    /* flex children in column direction */
+    width: 100%;
+    grid-column: unset;
+    grid-row: unset;
+    overflow: visible;
+  }
+
+  /* Side panels: compact, limit player list */
+  .side {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  /* First panel (code+players) spans full width */
+  .side > .panel:first-child {
+    grid-column: 1 / -1;
+  }
+  /* Players list on mobile: smaller max-height */
+  .players { max-height: 140px; }
+
+  /* Center col: normal flex column */
+  .center-col {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Chat: fixed, compact height */
+  .chat {
+    height: 260px;
+    min-height: 260px;
+    max-height: 260px;
+  }
+
+  /* Header: keep on one line, shrink buttons */
+  header {
+    height: auto;
+    min-height: 50px;
+    padding: 8px 12px;
+    flex-wrap: nowrap;
+  }
+  .brand {
+    font-size: 14px;
+    letter-spacing: 1px;
+    flex-shrink: 0;
+  }
+  .brand em { display: none; }
+  .header-actions {
+    gap: 4px;
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+  }
+  .header-actions .button {
+    min-height: 28px;
+    padding: 0 8px;
+    font-size: 8px;
+    letter-spacing: 0;
+  }
+  /* Hide invite button on very small screens to save space */
+  #copy-invite { display: none; }
+
+  /* Landing */
   .landing-grid { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 34px; }
+
+  /* Lobby actions */
   .lobby-actions { grid-template-columns: 1fr; width: 100%; }
   .lobby-actions #start { grid-column: auto; }
   .roles { grid-template-columns: 1fr; }
-  .hero h1 { font-size: 36px; }
-  header { padding: 0 14px; }
-  .header-actions { gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
-  .destiny-card { width: min(320px, 92vw); height: 470px; }
-  .card-name { font-size: 28px; }
-  .card-art { font-size: 90px; }
+
+  /* Card */
+  .destiny-card { width: min(310px, 90vw); height: 460px; }
+  .card-name { font-size: 26px; }
+  .card-art { font-size: 86px; }
   .card-copy { font-size: 12px; }
-  .tap-hint { bottom: 32px; }
-  .notice { padding: 16px; }
-  .choice-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+  .tap-hint { bottom: 30px; }
+
+  /* Notice & choices */
+  .notice { padding: 14px; }
+  .choice-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; }
+
+  /* Phase banner: smaller */
+  .phase-banner { padding: 7px 12px; font-size: 11px; }
+  .phase-icon { font-size: 15px; }
+  .phase-num { font-size: 12px; }
+
+  /* Code smaller */
+  .code { font-size: 22px; letter-spacing: 4px; }
+
+  /* Role icon smaller */
+  .role-icon-big { font-size: 38px; }
+  .role-name { font-size: 18px; }
+}
+
+/* ── Very small phones ── */
+@media (max-width: 380px) {
+  .side {
+    grid-template-columns: 1fr;
+  }
+  .side > .panel:first-child {
+    grid-column: auto;
+  }
+  .header-actions .button { font-size: 7px; padding: 0 6px; }
 }
 
 /* ════════════════════════════════════════════════
