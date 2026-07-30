@@ -832,7 +832,8 @@ io.on('connection', (socket) => {
       target = String(data?.target || '');
     if (!s || !s.actorIds.includes(socket.id))
       return error(socket, 'Du bist gerade nicht an der Reihe.');
-    if (!s.targets?.some((t) => t.id === target)) return error(socket, 'Ungültiges Ziel.');
+    if (data?.kind !== 'heal' && !s.targets?.some((t) => t.id === target))
+      return error(socket, 'Ungültiges Ziel.');
     if (s.task === 'wolf') {
       l.nightData.wolfVotes ??= new Map();
       l.nightData.wolfVotes.set(socket.id, target);

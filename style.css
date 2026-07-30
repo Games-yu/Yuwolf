@@ -1304,6 +1304,19 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
   .header-actions .button { min-height: 26px; padding: 0 8px; font-size: 8px; letter-spacing: 0; }
   /* Hide invite link on mobile – saves space */
   #copy-invite { display: none; }
+  
+  /* Hide giant background moon on mobile to prevent overlap issues */
+  .moon { display: none; }
+
+  /* Wrapper for landing page so it can scroll properly */
+  .landing-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
 
   /* App fills everything below header */
   #app {
@@ -1350,26 +1363,30 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
   /* Chat: compact strip fixed at bottom */
   .chat {
     flex-shrink: 0;
-    height: 190px;
-    min-height: 190px;
-    max-height: 190px;
+    height: 135px;
+    min-height: 135px;
+    max-height: 135px;
     grid-column: unset;
     grid-row: unset;
     overflow: hidden;
   }
 
   /* Tighter phase banner */
-  .phase-banner { padding: 6px 10px; font-size: 10px; border-radius: 99px; flex-wrap: wrap; }
-  .phase-icon { font-size: 14px; }
-  .phase-num { font-size: 11px; }
+  .phase-banner { padding: 4px 8px; font-size: 9px; border-radius: 99px; flex-wrap: wrap; margin-bottom: 2px; }
+  .phase-icon { font-size: 12px; }
+  .phase-num { font-size: 10px; }
 
   /* Smaller title */
-  .title { font-size: clamp(20px, 6vw, 32px); margin: 4px 0; }
+  .title { font-size: clamp(20px, 6vw, 32px); margin: 0 0 6px; }
   .section-title { font-size: 18px; }
 
   /* Compact notice */
-  .notice { padding: 12px; border-radius: 10px; }
-  .notice-text { font-size: 13px; margin-bottom: 10px; }
+  .notice { padding: 8px 10px; border-radius: 8px; }
+  .notice-text { font-size: 12px; margin-bottom: 8px; }
+  
+  /* Waiting card */
+  .waiting-card { padding: 12px 10px; }
+  .waiting-card span { font-size: 28px; }
 
   /* Smaller choice buttons */
   .choice-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; }
