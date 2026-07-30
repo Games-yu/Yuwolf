@@ -469,20 +469,15 @@ function buildDayVoteAction(targets, isHost) {
     <span class="vote-progress-label">${votedCount} von ${totalVoters} haben abgestimmt</span>
   </div>`;
 
+  let headerContent = '';
   if (hasCast) {
     const myTargetName = targets.find((t) => t.id === myTarget)?.name || '?';
-    return `${progressBar}
-      <div class="vote-cast-confirm">
-        <span class="vote-cast-icon">✓</span>
-        <p>Du hast für <strong>${esc(myTargetName)}</strong> gestimmt.</p>
-        <p class="muted" style="font-size:12px;">Abstimmung ist anonym – Ergebnis nach der Auflösung.</p>
-      </div>
-      <div class="choice-grid anon-vote-grid">
-        ${targets.map((t) => {
-          const count = state.vote?.tally?.[t.id] || 0;
-          return `<div class="choice ${t.id === myTarget ? 'selected' : ''}"><span>${esc(t.name)}</span>${count > 0 ? `<span class="vote-count">${count}</span>` : ''}</div>`;
-        }).join('')}
-      </div>`;
+    headerContent = `<div class="vote-cast-confirm">
+      <span class="vote-cast-icon">✓</span>
+      <p>Du hast für <strong>${esc(myTargetName)}</strong> gestimmt. <small>(Du kannst deine Meinung noch ändern)</small></p>
+    </div>`;
+  } else {
+    headerContent = `<p class="action-hint">Wähle, wen du für schuldig hältst. Deine Stimme ist anonym.</p>`;
   }
 
   // Players cannot vote for themselves – render self as greyed-out, non-clickable
@@ -499,7 +494,7 @@ function buildDayVoteAction(targets, isHost) {
     const voteBar = count > 0
       ? `<div class="anon-vote-bar" style="width:${Math.min(count * 20, 100)}%"></div>`
       : '';
-    return `<button class="choice vote-choice" data-target="${t.id}" data-type="vote">
+    return `<button class="choice vote-choice ${t.id === myTarget ? 'selected' : ''}" data-target="${t.id}" data-type="vote">
       <span>${esc(t.name)}</span>
       ${count > 0 ? `<span class="vote-count">${count}</span>` : ''}
       ${voteBar}
@@ -507,7 +502,7 @@ function buildDayVoteAction(targets, isHost) {
   }).join('');
 
   return `${progressBar}
-    <p class="action-hint">Wähle, wen du für schuldig hältst. Deine Stimme ist anonym.</p>
+    ${headerContent}
     <div class="choice-grid">${voteGridItems}</div>
     ${isHost ? button('Niemand wird verurteilt', 'button secondary', 'skip') : ''}`;
 }

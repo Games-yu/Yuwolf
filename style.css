@@ -480,8 +480,28 @@ header {
   padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
+  background: #11152488;
   font-size: 12px;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background 0.2s;
+}
+.players li:hover {
+  border-color: #ffffff33;
+  background: #1a1f33cc;
+}
+.kick-btn {
+  background: transparent;
+  border: none;
+  color: #e54d4d;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 6px;
+  margin-left: 6px;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
+}
+.kick-btn:hover {
+  background: #e54d4d22;
+  color: #ff6b6b;
 }
 .players li.me {
   border-color: #e5bd6855;
