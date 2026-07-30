@@ -489,12 +489,22 @@ function kill(l, id, reason) {
   if (!p || !p.alive) return;
   p.alive = false;
   system(l, `${p.name} ${reason}.`);
+  const checkDoppel = (deadId, deadRole) => {
+    for (const x of alive(l)) {
+      if (x.role === 'doppelganger' && x.copies === deadId) {
+        x.role = deadRole;
+        system(l, `Der Doppelgänger nimmt eine neue Gestalt an.`);
+      }
+    }
+  };
+  checkDoppel(id, p.role);
   const other = l.lovers.find((x) => x !== id);
   if (l.lovers.includes(id) && other) {
     const lover = find(l, other);
     if (lover?.alive) {
       lover.alive = false;
       system(l, `${lover.name} stirbt an gebrochenem Herzen.`);
+      checkDoppel(lover.id, lover.role);
       if (lover.role === 'hunter') l.hunter = lover.id;
     }
   }
@@ -832,7 +842,10 @@ io.on('connection', (socket) => {
       target = String(data?.target || '');
     if (!s || !s.actorIds.includes(socket.id))
       return error(socket, 'Du bist gerade nicht an der Reihe.');
-    if (data?.kind !== 'heal' && !s.targets?.some((t) => t.id === target))
+    if (data?.kind !== 'heal' && data?.kind !== 'poison' && !s.targets?.some((t) => t.id === target))
+      return error(socket, 'Ungültiges Ziel.');
+    // For poison, target must be alive
+    if (data?.kind === 'poison' && !validTarget(l, target))
       return error(socket, 'Ungültiges Ziel.');
     if (s.task === 'wolf') {
       l.nightData.wolfVotes ??= new Map();
@@ -879,6 +892,9 @@ io.on('connection', (socket) => {
           l.nightData.healed = true;
         } else return error(socket, 'Heiltrank ist gerade nicht verfügbar.');
       } else if (data.kind === 'poison' && l.potions.poison) {
+        // Cannot poison the already-healed wolf victim (waste prevention)
+        if (target === l.nightData.wolfTarget && l.nightData.healed)
+          return error(socket, 'Du hast dieses Opfer bereits geheilt.');
         l.potions.poison = false;
         l.nightData.poisonTarget = target;
       } else return error(socket, 'Dieser Trank ist nicht verfügbar.');

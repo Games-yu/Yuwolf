@@ -128,7 +128,6 @@ header {
   scrollbar-color: #ffffff20 transparent;
 }
 
-/* Right column: chat, fills row height exactly */
 .chat {
   display: flex;
   flex-direction: column;
@@ -151,6 +150,7 @@ header {
   min-height: 0;
   /* Force messages to scroll, never expand parent */
   max-height: 100%;
+  word-break: break-word;
 }
 
 /* ════════════════════════════════════════════════
@@ -614,18 +614,19 @@ header {
 }
 .msg-icon { color: #e5bd6888; font-size: 8px; margin-top: 3px; flex-shrink: 0; }
 .message.reaction {
-  text-align: center;
+  text-align: left;
   background: transparent;
   border-color: transparent;
-  font-size: 18px;
+  font-size: 12px;
+  color: var(--muted);
 }
 .send {
   display: flex;
   gap: 7px;
-  margin-top: 8px;
+  margin-top: 6px;
   flex-shrink: 0;
 }
-.send .input { flex: 1; }
+.send .input { flex: 1; min-height: 36px; padding: 8px 10px; font-size: 14px; }
 
 /* ════════════════════════════════════════════════
    BUTTONS
@@ -1292,20 +1293,20 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
   }
 
   header {
-    height: auto;
+    height: 48px;
     min-height: 48px;
-    padding: 6px 12px;
+    padding: 0 10px;
     flex-wrap: nowrap;
     overflow: hidden;
   }
   .brand { font-size: 13px; letter-spacing: 1px; flex-shrink: 0; }
   .brand em { display: none; }
   .header-actions { gap: 4px; flex-wrap: nowrap; flex-shrink: 0; }
-  .header-actions .button { min-height: 26px; padding: 0 8px; font-size: 8px; letter-spacing: 0; }
+  .header-actions .button { min-height: 28px; height: 28px; padding: 0 10px; font-size: 8.5px; letter-spacing: 0; border-radius: 6px; }
   /* Hide invite link on mobile – saves space */
   #copy-invite { display: none; }
-  
-  /* Hide giant background moon on mobile to prevent overlap issues */
+
+  /* Hide giant background moon on mobile */
   .moon { display: none; }
 
   /* Wrapper for landing page so it can scroll properly */
@@ -1321,7 +1322,7 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
   /* App fills everything below header */
   #app {
     height: calc(100dvh - 48px);
-    padding: 6px 8px 6px;
+    padding: 6px 8px 4px;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -1333,16 +1334,14 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
     flex-direction: column;
     flex: 1;
     min-height: 0;
-    gap: 6px;
+    gap: 5px;
     overflow: hidden;
-    /* Reset any grid leftover */
     height: 100%;
     grid-template-columns: unset;
     grid-template-rows: unset;
   }
 
-  /* Side panels: hidden on mobile to save space during gameplay.
-     Player list / role / log are shown inside center-col instead. */
+  /* Side panels: hidden on mobile */
   .side { display: none !important; }
   #private-notes { display: none !important; }
 
@@ -1354,56 +1353,141 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    /* Reset grid placement */
+    gap: 5px;
     grid-column: unset;
     grid-row: unset;
+    /* Prevent center from eating all space from chat */
+    max-height: calc(100dvh - 48px - 140px - 22px);
   }
 
-  /* Chat: compact strip fixed at bottom */
+  /* .game div: flex column so .notice can grow */
+  .game {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+  }
+  /* The notice must flex-grow to fill the .game */
+  .game .notice {
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* Chat: compact strip fixed at bottom, strictly contained */
   .chat {
-    flex-shrink: 0;
-    height: 135px;
-    min-height: 135px;
-    max-height: 135px;
+    flex: 0 0 auto;
+    height: 140px;
+    min-height: 140px;
+    max-height: 140px;
     grid-column: unset;
     grid-row: unset;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px;
   }
+  .chat .eyebrow {
+    font-size: 9px;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+    flex-shrink: 0;
+  }
+  #messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .message {
+    font-size: 11px;
+    padding: 3px 6px;
+    line-height: 1.4;
+    border-radius: 5px;
+  }
+  .message.system { font-size: 10px; }
+  .message.reaction { font-size: 11px; }
+  .chat .send {
+    margin-top: 4px;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+  .chat .send .input {
+    min-height: 30px;
+    height: 30px;
+    padding: 4px 8px;
+    font-size: 13px;
+    border-radius: 6px;
+  }
+  .chat .send .button {
+    min-height: 30px;
+    height: 30px;
+    padding: 0 10px;
+    font-size: 9px;
+  }
+  /* Reaction bar compact */
+  .chat #reaction-bar {
+    padding: 2px 0;
+    gap: 3px;
+    flex-shrink: 0;
+    margin-bottom: 2px;
+  }
+  .chat #reaction-bar button {
+    font-size: 14px;
+    padding: 2px 4px;
+  }
+  /* Spectator banner */
+  .spectator-banner { font-size: 10px; padding: 3px 0; margin-bottom: 3px; flex-shrink: 0; }
 
   /* Tighter phase banner */
-  .phase-banner { padding: 4px 8px; font-size: 9px; border-radius: 99px; flex-wrap: wrap; margin-bottom: 2px; }
+  .phase-banner { padding: 4px 10px; font-size: 9px; border-radius: 99px; margin-bottom: 2px; }
   .phase-icon { font-size: 12px; }
   .phase-num { font-size: 10px; }
 
   /* Smaller title */
-  .title { font-size: clamp(20px, 6vw, 32px); margin: 0 0 6px; }
-  .section-title { font-size: 18px; }
+  .title { font-size: clamp(18px, 5.5vw, 28px); margin: 0 0 4px; }
+  .section-title { font-size: 17px; }
 
-  /* Compact notice */
-  .notice { padding: 8px 10px; border-radius: 8px; }
-  .notice-text { font-size: 12px; margin-bottom: 8px; }
-  
+  /* Compact notice – allows content to scroll inside */
+  .notice {
+    padding: 8px 10px;
+    border-radius: 8px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+  }
+  .notice-text { font-size: 12px; margin-bottom: 6px; }
+
   /* Waiting card */
-  .waiting-card { padding: 12px 10px; }
-  .waiting-card span { font-size: 28px; }
+  .waiting-card { padding: 10px 8px; }
+  .waiting-card span { font-size: 26px; }
+  .waiting-card p { font-size: 12px; }
+
+  /* Mini eventlog */
+  .mini-eventlog { font-size: 11px; padding: 5px 8px; margin-bottom: 6px; }
 
   /* Smaller choice buttons */
-  .choice-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; }
-  .choice { padding: 10px 10px; }
+  .choice-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 5px; margin-bottom: 6px; }
+  .choice { padding: 8px 6px; font-size: 12px; min-height: 36px; }
+
+  /* Action hint */
+  .action-hint { font-size: 11px; margin-bottom: 8px; }
 
   /* Timer smaller */
-  .phase-timer { font-size: 10px; padding: 6px 12px; }
-  .phase-timer strong { font-size: 18px; }
+  .phase-timer { font-size: 10px; padding: 5px 10px; margin-bottom: 6px; }
+  .phase-timer strong { font-size: 16px; }
 
   /* Code smaller */
   .code { font-size: 20px; letter-spacing: 3px; }
 
   /* Landing page */
   .landing-grid { grid-template-columns: 1fr; }
-  .hero { margin: 6px auto 16px; }
-  .hero h1 { font-size: 32px; }
-  .hero p { font-size: 13px; }
+  .hero { margin: 6px auto 14px; }
+  .hero h1 { font-size: 28px; }
+  .hero p { font-size: 12px; }
 
   /* Lobby actions */
   .lobby-actions { grid-template-columns: 1fr; width: 100%; }
@@ -1411,21 +1495,50 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
   .roles { grid-template-columns: 1fr; }
 
   /* Result cards */
-  .result-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
-  .result-role-icon { font-size: 26px; }
-  .result-name { font-size: 12px; }
+  .result-grid { grid-template-columns: repeat(auto-fill, minmax(85px, 1fr)); gap: 5px; }
+  .result-role-icon { font-size: 24px; }
+  .result-name { font-size: 11px; }
 
   /* Destiny card */
-  .destiny-card { width: min(300px, 88vw); height: 440px; }
-  .card-name { font-size: 24px; }
-  .card-art { font-size: 80px; }
-  .card-copy { font-size: 12px; }
-  .tap-hint { bottom: 28px; }
+  .destiny-card { width: min(280px, 85vw); height: 400px; }
+  .card-name { font-size: 22px; }
+  .card-art { font-size: 70px; }
+  .card-copy { font-size: 11px; }
+  .tap-hint { bottom: 24px; }
 
   /* Role icon smaller */
-  .role-icon-big { font-size: 36px; }
-  .role-name { font-size: 17px; }
+  .role-icon-big { font-size: 32px; }
+  .role-name { font-size: 16px; }
+
+  /* Night actor banner */
+  .night-actor-banner { padding: 10px; gap: 8px; margin: 6px 0; }
+  .night-actor-icon { font-size: 24px; }
+  .night-actor-label { font-size: 13px; }
+  .night-actor-sub { font-size: 11px; }
+
+  /* Vote progress */
+  .vote-progress-wrap { margin-bottom: 8px; }
+  .vote-progress-label { font-size: 10px; }
+
+  /* Wolf vote progress */
+  .wolf-vote-progress { margin-bottom: 8px; }
+
+  /* Witch victim card */
+  .witch-victim-card { padding: 8px 10px; gap: 8px; margin-bottom: 8px; }
+  .witch-victim-icon { font-size: 18px; }
+
+  /* Private result modal */
+  .private-result-card { padding: 20px 16px; }
+  .private-result-icon { font-size: 44px; }
+  .private-result-card h2 { font-size: 18px; }
+  .private-result-card p { font-size: 13px; }
+
+  /* Game end modal */
+  .game-end-content { padding: 24px 20px; width: min(90vw, 360px); }
+  .game-end-title { font-size: 28px; }
+  .game-end-subtitle { font-size: 13px; }
 }
+
 
 /* ── Very small phones (380px and below) ── */
 @media (max-width: 380px) {
