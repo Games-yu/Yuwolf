@@ -175,13 +175,18 @@ function error(socket, message) {
 function lobbyFor(socket) {
   return socket.data.lobbyCode ? lobbies.get(socket.data.lobbyCode) : undefined;
 }
-function leaveLobby(socket, l) {
-  const player = find(l, socket.id);
+function removePlayerFromLobby(l, playerId) {
+  const player = find(l, playerId);
   if (!player) return;
-  const wasHost = l.hostId === socket.id;
-  l.players = l.players.filter((p) => p.id !== socket.id);
-  socket.leave(l.code);
-  socket.data.lobbyCode = undefined;
+  const wasHost = l.hostId === playerId;
+  l.players = l.players.filter((p) => p.id !== playerId);
+  
+  const s = io.sockets.sockets.get(playerId);
+  if (s) {
+    s.leave(l.code);
+    s.data.lobbyCode = undefined;
+  }
+  
   if (!l.players.length) {
     clearPhaseTimer(l);
     lobbies.delete(l.code);
@@ -197,7 +202,7 @@ function leaveLobby(socket, l) {
   }
   system(l, `${player.name} hat Yu’s DüsterWald verlassen.`);
   if (l.phase === 'reveal') {
-    l.revealed?.delete(socket.id);
+    l.revealed?.delete(playerId);
     if (l.revealed?.size >= l.players.length) return beginNight(l);
   } else if (l.phase === 'night') {
     if (checkWinner(l)) return setPhase(l, 'ended');
@@ -212,9 +217,9 @@ function leaveLobby(socket, l) {
     }
   } else if (l.phase === 'day') {
     if (checkWinner(l)) return setPhase(l, 'ended');
-    if (l.votes) l.votes.delete(socket.id);
+    if (l.votes) l.votes.delete(playerId);
   } else if (l.phase === 'hunter') {
-    if (l.hunter === socket.id) {
+    if (l.hunter === playerId) {
       l.hunter = null;
       const nextFn = l.selection?.next || (() => beginNight(l));
       return afterDeaths(l, nextFn);
@@ -752,22 +757,23 @@ io.on('connection', (socket) => {
   });
   socket.on('lobby:kick', (targetId) => {
     const l = lobbyFor(socket);
-    if (!l || l.hostId !== socket.id || l.phase !== 'lobby' || targetId === socket.id) return;
+    // Allow kicking during the game too, not just in lobby
+    if (!l || l.hostId !== socket.id || targetId === socket.id) return;
     const target = find(l, targetId);
     if (!target) return;
-    l.players = l.players.filter((player) => player.id !== targetId);
-    const targetSocket = io.sockets.sockets.get(targetId);
-    targetSocket?.leave(l.code);
-    if (targetSocket) targetSocket.data.lobbyCode = undefined;
+    
     io.to(targetId).emit('app:error', 'Du wurdest vom Host aus der Lobby entfernt.');
     io.to(targetId).emit('lobby:left');
-    system(l, `${target.name} wurde aus der Lobby entfernt.`);
-    broadcast(l);
+    removePlayerFromLobby(l, targetId);
   });
   socket.on('lobby:leave', () => {
-    const l = lobbyFor(socket);
-    if (!l) return;
-    leaveLobby(socket, l);
+    // If lobbyFor fails (e.g. data lost on reconnect), search for player in all lobbies
+    const l = lobbyFor(socket) || [...lobbies.values()].find(lobby => lobby.players.some(p => p.id === socket.id));
+    if (l) {
+      removePlayerFromLobby(l, socket.id);
+    } else {
+      socket.data.lobbyCode = undefined;
+    }
     socket.emit('lobby:left');
   });
   socket.on('game:rematch', () => {

@@ -144,9 +144,10 @@ function render() {
     .map((p) => {
       const isMe = p.id === socket.id;
       const isWolfTeam = own?.wolfTeam?.some((w) => w.id === p.id);
+      const hostKick = (isHost && !isMe) ? ` <button class="kick-btn" data-kick="${p.id}" title="${esc(p.name)} entfernen">✕</button>` : '';
       return `<li class="${!p.alive ? 'dead' : ''} ${!p.connected ? 'offline' : ''} ${isWolfTeam ? 'wolf-ally' : ''} ${isMe ? 'me' : ''}" title="${isWolfTeam ? '🐺 Dein Rudel-Mitglied' : ''}">
         <span class="player-name">${p.host ? '♛ ' : ''}${esc(p.name)}${isMe ? ' <span class="me-tag">Ich</span>' : ''}${isWolfTeam ? ' <span class="wolf-tag">🐺</span>' : ''}</span>
-        <span class="player-status">${!p.connected ? '· getrennt' : !p.alive ? '· ☠' : p.ready && state.phase === 'lobby' ? '· ✓' : ''}</span>
+        <span class="player-status">${!p.connected ? '· getrennt' : !p.alive ? '· ☠' : p.ready && state.phase === 'lobby' ? '· ✓' : ''}${hostKick}</span>
       </li>`;
     })
     .join('');
@@ -661,6 +662,14 @@ function wireRender() {
     socket.emit('game:action', { target: cupidChoices[0], second: cupidChoices[1] });
     cupidChoices = [];
     selected = null;
+  });
+  document.querySelectorAll('.kick-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm('Diesen Spieler wirklich aus dem Spiel werfen?')) {
+        socket.emit('lobby:kick', btn.dataset.kick);
+      }
+    };
   });
   const messages = document.querySelector('#messages');
   if (messages) messages.scrollTop = messages.scrollHeight;

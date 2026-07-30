@@ -1283,13 +1283,13 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
   .players { max-height: 150px; }
 }
 
-/* ── Mobile (600px and below): VIEWPORT-LOCKED, no page scroll ── */
+/* ── Mobile (600px and below): Scrollable Page Layout ── */
 @media (max-width: 600px) {
-  /* Lock the page – only internal regions scroll */
   html, body {
-    height: 100dvh;
-    max-height: 100dvh;
-    overflow: hidden;
+    height: auto;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
   }
 
   header {
@@ -1321,9 +1321,10 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
 
   /* App fills everything below header */
   #app {
-    height: calc(100dvh - 48px);
-    padding: 6px 8px 4px;
-    overflow: hidden;
+    height: auto;
+    min-height: calc(100dvh - 48px);
+    padding: 6px 8px 16px;
+    overflow: visible;
     display: flex;
     flex-direction: column;
   }
@@ -1333,53 +1334,49 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
     display: flex;
     flex-direction: column;
     flex: 1;
-    min-height: 0;
-    gap: 5px;
-    overflow: hidden;
-    height: 100%;
+    height: auto;
+    gap: 12px;
+    overflow: visible;
     grid-template-columns: unset;
     grid-template-rows: unset;
   }
 
-  /* Side panels: hidden on mobile */
-  .side { display: none !important; }
-  #private-notes { display: none !important; }
+  /* Side panels: shown on mobile, moved to bottom */
+  .side {
+    order: 3;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
 
-  /* Center: grows to fill remaining space, scrolls internally */
+  /* Center: main game area, shown first */
   .center-col {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
+    order: 1;
+    height: auto;
+    overflow: visible;
     display: flex;
     flex-direction: column;
     gap: 5px;
     grid-column: unset;
     grid-row: unset;
-    /* Prevent center from eating all space from chat */
-    max-height: calc(100dvh - 48px - 140px - 22px);
   }
 
-  /* .game div: flex column so .notice can grow */
+  /* .game div */
   .game {
     display: flex;
     flex-direction: column;
-    flex: 1;
-    min-height: 0;
   }
-  /* The notice must flex-grow to fill the .game */
   .game .notice {
-    overflow-y: auto;
-    flex: 1;
-    min-height: 0;
+    overflow: visible;
+    height: auto;
   }
 
-  /* Chat: compact strip fixed at bottom, strictly contained */
+  /* Chat: slightly larger on mobile since it can scroll with page */
   .chat {
-    flex: 0 0 auto;
-    height: 140px;
-    min-height: 140px;
-    max-height: 140px;
+    order: 2;
+    height: 250px;
+    min-height: 250px;
+    max-height: 250px;
     grid-column: unset;
     grid-row: unset;
     overflow: hidden;
