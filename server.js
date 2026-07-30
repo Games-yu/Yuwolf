@@ -281,8 +281,10 @@ function selectionView(l, player) {
   const selection = l.selection;
   if (!selection) return null;
   const isActor = selection.actorIds?.includes(player?.id);
-  // Dead spectators always see the waiting view, never night actions
-  if (!isActor || !player?.alive) {
+  // Dead hunter MUST still see and use their last shot even though !player.alive
+  const isDeadHunterActing = l.phase === 'hunter' && isActor;
+  // All other dead players and non-actors get a minimal spectator/waiting view
+  if ((!isActor || !player?.alive) && !isDeadHunterActing) {
     return l.phase === 'night'
       ? { task: 'waiting', actorIds: [], targets: [], text: 'Die Nacht ist still. Warte ab.' }
       : { ...selection, actorIds: [], spectator: true };
@@ -308,6 +310,14 @@ function selectionView(l, player) {
     view.wolfMyTarget = votes.get(player.id) || null;
     view.wolfTotalCount = totalWolves;
     view.wolfVotedCount = votedCount;
+  }
+  // Witch: show who the wolves attacked so she can decide to heal
+  if (selection.task === 'witch') {
+    const wolfTargetId = l.nightData?.wolfTarget || null;
+    view.wolfTargetId = wolfTargetId;
+    view.wolfTargetName = wolfTargetId ? (find(l, wolfTargetId)?.name || null) : null;
+    // Only show heal button if there is actually a wolf target AND potion is available
+    view.canHeal = !!(wolfTargetId && l.potions?.heal);
   }
   return view;
 }
@@ -904,6 +914,8 @@ io.on('connection', (socket) => {
     const voter = l && find(l, socket.id);
     if (!l || !voter || !voter.alive || l.phase !== 'day')
       return error(socket, 'Die Abstimmung ist gerade nicht aktiv.');
+    // Prevent voting for yourself
+    if (target === socket.id) return error(socket, 'Du kannst nicht für dich selbst stimmen.');
     if (!validTarget(l, target)) return error(socket, 'Ungültiges Ziel.');
     l.votes.set(socket.id, target);
     const required = alive(l).filter((p) => p.connected);

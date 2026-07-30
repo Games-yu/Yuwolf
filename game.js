@@ -173,7 +173,7 @@ function render() {
       <div class="eyebrow">Dorfplatz</div>
       <div id="messages" class="messages">${state.messages.map((m) => m.system
         ? `<div class="message system"><span class="msg-icon">◆</span>${esc(m.text)}</div>`
-        : `<div class="message ${m.reaction ? 'reaction' : ''}"><b>${esc(m.name)}:</b> ${esc(m.text)}</div>`).join('')}</div>
+        : `<div class="message"><b>${esc(m.name)}:</b> ${esc(m.text)}</div>`).join('')}</div>
       <div class="send">
         <input id="chat-input" class="input" maxlength="360" placeholder="Schreibe ins Dorf…">
         ${button('Senden', 'button', 'send')}
@@ -347,8 +347,27 @@ function gameCenter(own, isHost, isSpectator) {
     if (s.task === 'wolf') action = buildWolfAction(targets, own);
     else if (s.task === 'cupid')
       action = `<p class="action-hint">Wähle zwei Menschen, die miteinander verbunden werden.</p>${targetButtons(targets, 'love')}${button('Herzen verbinden', 'button', 'act')}`;
-    else if (s.task === 'witch')
-      action = `<p class="action-hint">${own?.witch?.heal && state.night ? 'Du kannst heilen oder vergiften.' : ''}</p>${own.witch?.heal ? button('Heiltrank verwenden', 'button secondary', 'heal') : ''} ${own.witch?.poison ? targetButtons(targets, 'poison') : ''} ${button('Nichts tun', 'button secondary', 'skip')}`;
+    else if (s.task === 'witch') {
+      const victimName = s.wolfTargetName || null;
+      const canHeal = s.canHeal && own.witch?.heal;
+      const canPoison = own.witch?.poison;
+      const healTargets = targets.filter((t) => t.id !== s.wolfTargetId);
+      action = `
+        ${victimName
+          ? `<div class="witch-victim-card">
+               <span class="witch-victim-icon">🐺</span>
+               <div>
+                 <strong>Das Rudel hat <span class="witch-victim-name">${esc(victimName)}</span> angegriffen!</strong>
+                 <div class="witch-victim-sub">Du kannst ${canHeal ? 'heilen oder ' : ''}${canPoison ? 'vergiften oder passen' : 'nichts tun'}.</div>
+               </div>
+             </div>`
+          : '<p class="action-hint">Das Rudel hat dieses Mal niemanden angegriffen.</p>'
+        }
+        ${canHeal ? button('Heile ' + esc(victimName || ''), 'button secondary', 'heal') : ''}
+        ${canPoison ? '<p class="action-hint" style="margin-top:10px;">Oder jemanden vergiften:</p>' + targetButtons(healTargets, 'poison') : ''}
+        ${button('Nichts tun', 'button secondary', 'skip')}
+      `;
+    }
     else
       action = `${targetButtons(targets, 'act')}${button('Nicht handeln', 'button secondary', 'skip')}`;
   } else {
@@ -419,9 +438,12 @@ function buildDayVoteAction(targets, isHost) {
       </div>`;
   }
 
+  // Players cannot vote for themselves
+  const voteTargets = targets.filter((t) => t.id !== socket.id);
+
   return `${progressBar}
     <p class="action-hint">Wähle, wen du für schuldig hältst. Deine Stimme ist anonym.</p>
-    ${targetButtons(targets, 'vote')}
+    ${targetButtons(voteTargets, 'vote')}
     ${isHost ? button('Niemand wird verurteilt', 'button secondary', 'skip') : ''}`;
 }
 
@@ -595,7 +617,8 @@ function appendChatMessages() {
   const fragment = document.createDocumentFragment();
   pendingChatMessages.splice(0).forEach((message) => {
     const row = document.createElement('div');
-    row.className = message.system ? 'message system' : `message${message.reaction ? ' reaction' : ''}`;
+    // Reactions render as normal chat messages – no special huge emoji display
+    row.className = message.system ? 'message system' : 'message';
     if (message.system) {
       const icon = document.createElement('span');
       icon.className = 'msg-icon';

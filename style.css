@@ -1112,6 +1112,21 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
 .host-moderation button span { color: #e58a8a; font-size: 10px; text-transform: uppercase; }
 .host-moderation button:hover { border-color: #ca6970; }
 
+/* Witch victim card */
+.witch-victim-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #e54d4d66;
+  border-radius: 10px;
+  background: #1a0a0a;
+  margin-bottom: 14px;
+}
+.witch-victim-icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+.witch-victim-name { color: var(--wolf-red); font-weight: 800; }
+.witch-victim-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
 /* Reaction bar – compact, never wraps */
 .chat #reaction-bar {
   display: flex;
@@ -1144,162 +1159,181 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
    RESPONSIVE
    ════════════════════════════════════════════════ */
 
-/* ── Large desktop 1200px+ uses base styles (3-col, full height) ── */
-
 /* ── Medium desktop / laptop ── */
 @media (max-width: 1100px) {
   .room {
-    grid-template-columns: minmax(190px, 230px) 1fr minmax(240px, 280px);
-    height: calc(100dvh - 56px - 36px);
+    grid-template-columns: minmax(190px, 220px) 1fr minmax(230px, 270px);
+    height: calc(100dvh - 56px - 32px);
     gap: 10px;
   }
+  #app { padding: 12px 14px 20px; }
 }
 
-/* ── Tablet: 2-col, auto height ── */
+/* ── Tablet (860px and below): side-by-side but auto height ── */
 @media (max-width: 860px) {
-  #app { padding: 12px 14px 20px; }
+  #app { padding: 10px 12px 16px; }
   .room {
-    grid-template-columns: minmax(200px, 1fr) minmax(0, 1.4fr);
-    grid-template-rows: auto auto;
-    height: auto;
-    gap: 10px;
-    /* no fixed height on tablet */
+    grid-template-columns: minmax(180px, 220px) 1fr;
+    grid-template-rows: 1fr auto;
+    height: calc(100dvh - 56px - 26px);
+    gap: 8px;
   }
+  /* Side: left column, scrolls internally */
   .side {
     grid-column: 1 / 2;
     grid-row: 1 / 2;
-    overflow-y: visible;
-    max-height: none;
+    overflow-y: auto;
   }
+  /* Center: right column, takes remaining space */
   .center-col {
     grid-column: 2 / 3;
-    grid-row: 1 / 3;
-    overflow-y: visible;
+    grid-row: 1 / 2;
+    overflow-y: auto;
   }
+  /* Chat: spans full width at bottom */
   .chat {
-    grid-column: 1 / 2;
+    grid-column: 1 / -1;
     grid-row: 2 / 3;
-    height: 300px;
-    min-height: 300px;
+    height: 220px;
+    min-height: 220px;
   }
-  /* On tablet, player list can be a bit taller */
-  .players { max-height: 160px; }
+  .players { max-height: 150px; }
 }
 
-/* ── Mobile: SINGLE column, everything stacked ── */
+/* ── Mobile (600px and below): VIEWPORT-LOCKED, no page scroll ── */
 @media (max-width: 600px) {
-  #app { padding: 8px 10px 16px; }
+  /* Lock the page – only internal regions scroll */
+  html, body {
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
 
-  /* Reset all grid placement explicitly */
+  header {
+    height: auto;
+    min-height: 48px;
+    padding: 6px 12px;
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+  .brand { font-size: 13px; letter-spacing: 1px; flex-shrink: 0; }
+  .brand em { display: none; }
+  .header-actions { gap: 4px; flex-wrap: nowrap; flex-shrink: 0; }
+  .header-actions .button { min-height: 26px; padding: 0 8px; font-size: 8px; letter-spacing: 0; }
+  /* Hide invite link on mobile – saves space */
+  #copy-invite { display: none; }
+
+  /* App fills everything below header */
+  #app {
+    height: calc(100dvh - 48px);
+    padding: 6px 8px 6px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Room fills #app, stacks as flex column */
   .room {
     display: flex;
     flex-direction: column;
-    height: auto;
-    gap: 8px;
-  }
-  .side, .center-col, .chat {
-    /* flex children in column direction */
-    width: 100%;
-    grid-column: unset;
-    grid-row: unset;
-    overflow: visible;
+    flex: 1;
+    min-height: 0;
+    gap: 6px;
+    overflow: hidden;
+    /* Reset any grid leftover */
+    height: 100%;
+    grid-template-columns: unset;
+    grid-template-rows: unset;
   }
 
-  /* Side panels: compact, limit player list */
-  .side {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  /* First panel (code+players) spans full width */
-  .side > .panel:first-child {
-    grid-column: 1 / -1;
-  }
-  /* Players list on mobile: smaller max-height */
-  .players { max-height: 140px; }
+  /* Side panels: hidden on mobile to save space during gameplay.
+     Player list / role / log are shown inside center-col instead. */
+  .side { display: none !important; }
+  #private-notes { display: none !important; }
 
-  /* Center col: normal flex column */
+  /* Center: grows to fill remaining space, scrolls internally */
   .center-col {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    gap: 6px;
+    /* Reset grid placement */
+    grid-column: unset;
+    grid-row: unset;
   }
 
-  /* Chat: fixed, compact height */
+  /* Chat: compact strip fixed at bottom */
   .chat {
-    height: 260px;
-    min-height: 260px;
-    max-height: 260px;
+    flex-shrink: 0;
+    height: 190px;
+    min-height: 190px;
+    max-height: 190px;
+    grid-column: unset;
+    grid-row: unset;
+    overflow: hidden;
   }
 
-  /* Header: keep on one line, shrink buttons */
-  header {
-    height: auto;
-    min-height: 50px;
-    padding: 8px 12px;
-    flex-wrap: nowrap;
-  }
-  .brand {
-    font-size: 14px;
-    letter-spacing: 1px;
-    flex-shrink: 0;
-  }
-  .brand em { display: none; }
-  .header-actions {
-    gap: 4px;
-    flex-shrink: 0;
-    flex-wrap: nowrap;
-  }
-  .header-actions .button {
-    min-height: 28px;
-    padding: 0 8px;
-    font-size: 8px;
-    letter-spacing: 0;
-  }
-  /* Hide invite button on very small screens to save space */
-  #copy-invite { display: none; }
+  /* Tighter phase banner */
+  .phase-banner { padding: 6px 10px; font-size: 10px; border-radius: 99px; flex-wrap: wrap; }
+  .phase-icon { font-size: 14px; }
+  .phase-num { font-size: 11px; }
 
-  /* Landing */
+  /* Smaller title */
+  .title { font-size: clamp(20px, 6vw, 32px); margin: 4px 0; }
+  .section-title { font-size: 18px; }
+
+  /* Compact notice */
+  .notice { padding: 12px; border-radius: 10px; }
+  .notice-text { font-size: 13px; margin-bottom: 10px; }
+
+  /* Smaller choice buttons */
+  .choice-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; }
+  .choice { padding: 10px 10px; }
+
+  /* Timer smaller */
+  .phase-timer { font-size: 10px; padding: 6px 12px; }
+  .phase-timer strong { font-size: 18px; }
+
+  /* Code smaller */
+  .code { font-size: 20px; letter-spacing: 3px; }
+
+  /* Landing page */
   .landing-grid { grid-template-columns: 1fr; }
-  .hero h1 { font-size: 34px; }
+  .hero { margin: 6px auto 16px; }
+  .hero h1 { font-size: 32px; }
+  .hero p { font-size: 13px; }
 
   /* Lobby actions */
   .lobby-actions { grid-template-columns: 1fr; width: 100%; }
   .lobby-actions #start { grid-column: auto; }
   .roles { grid-template-columns: 1fr; }
 
-  /* Card */
-  .destiny-card { width: min(310px, 90vw); height: 460px; }
-  .card-name { font-size: 26px; }
-  .card-art { font-size: 86px; }
+  /* Result cards */
+  .result-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; }
+  .result-role-icon { font-size: 26px; }
+  .result-name { font-size: 12px; }
+
+  /* Destiny card */
+  .destiny-card { width: min(300px, 88vw); height: 440px; }
+  .card-name { font-size: 24px; }
+  .card-art { font-size: 80px; }
   .card-copy { font-size: 12px; }
-  .tap-hint { bottom: 30px; }
-
-  /* Notice & choices */
-  .notice { padding: 14px; }
-  .choice-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; }
-
-  /* Phase banner: smaller */
-  .phase-banner { padding: 7px 12px; font-size: 11px; }
-  .phase-icon { font-size: 15px; }
-  .phase-num { font-size: 12px; }
-
-  /* Code smaller */
-  .code { font-size: 22px; letter-spacing: 4px; }
+  .tap-hint { bottom: 28px; }
 
   /* Role icon smaller */
-  .role-icon-big { font-size: 38px; }
-  .role-name { font-size: 18px; }
+  .role-icon-big { font-size: 36px; }
+  .role-name { font-size: 17px; }
 }
 
-/* ── Very small phones ── */
+/* ── Very small phones (380px and below) ── */
 @media (max-width: 380px) {
-  .side {
-    grid-template-columns: 1fr;
-  }
-  .side > .panel:first-child {
-    grid-column: auto;
-  }
   .header-actions .button { font-size: 7px; padding: 0 6px; }
+  .phase-banner { font-size: 9px; }
+  .choice-grid { grid-template-columns: 1fr 1fr; }
+  .title { font-size: clamp(18px, 5.5vw, 26px); }
 }
 
 /* ════════════════════════════════════════════════
@@ -1309,3 +1343,4 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
   outline: 2px solid var(--gold);
   outline-offset: 2px;
 }
+
