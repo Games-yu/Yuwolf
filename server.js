@@ -240,14 +240,14 @@ function playerView(l, player) {
   const isHost = l.hostId === player.id;
   const role = roleInfo[player.role];
   const wolfTeam =
-    ['wolf', 'girl'].includes(player.role) || l.phase === 'ended'
-      ? alive(l)
-          .filter((p) => p.role === 'wolf' || p.id === player.id)
-          .map((p) => p.id)
+    player.role === 'wolf' || l.phase === 'ended'
+      ? l.players
+          .filter((p) => p.role === 'wolf' && p.id !== player.id)
+          .map((p) => ({ id: p.id, name: p.name, alive: p.alive }))
       : null;
   const own =
     l.phase === 'lobby'
-      ? { role: null }
+      ? { role: null, alive: true }
       : {
           role,
           alive: player.alive,
