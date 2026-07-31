@@ -121,6 +121,7 @@ function renderList(list) {
 function render() {
   if (!state) return;
   const previousScroll = window.scrollY;
+  const centerScroll = document.querySelector('.center-col')?.scrollTop || 0;
   const activeEl = document.activeElement;
   const activeId = activeEl?.id;
   const activeStart = activeEl?.selectionStart;
@@ -180,6 +181,11 @@ function render() {
       <article class="panel players-panel">
         <div class="eyebrow">Lobby-Code</div>
         <div class="code">${state.code}</div>
+        ${!['lobby','ended'].includes(state.phase) ? (() => {
+          const aliveCount = state.players.filter(p => p.alive).length;
+          const deadCount = state.players.length - aliveCount;
+          return `<div class="player-stats"><span class="stat-alive">🟢 ${aliveCount} am Leben</span><span class="stat-dead">💀 ${deadCount} tot</span></div>`;
+        })() : ''}
         <ul class="players">${everyone}</ul>
       </article>
       <article class="panel rolecard-panel">
@@ -211,6 +217,11 @@ function render() {
   wireRender();
   app.dispatchEvent(new Event('yuwolf:render'));
   updatePhaseTimerDisplay();
+  // Restore center column scroll position after re-render
+  requestAnimationFrame(() => {
+    const col = document.querySelector('.center-col');
+    if (col) col.scrollTop = centerScroll;
+  });
 
   if (chatVal !== undefined && document.querySelector('#chat-input'))
     document.querySelector('#chat-input').value = chatVal;
@@ -500,22 +511,25 @@ function gameCenter(own, isHost, isSpectator) {
 
 /* ─── Spectator view ─── */
 function buildSpectatorView(s) {
-  if (state.phase === 'day') {
-    const targets = state.selection?.targets || [];
-    const totalVoters = state.players.filter((p) => p.alive).length;
-    const votedCount = state.vote?.count || 0;
+  if (['day', 'mayor_election'].includes(state.phase)) {
+    const alivePlayers = state.players.filter((p) => p.alive);
+    const totalVotes = state.vote?.count || 0;
     return `<div class="spectator-vote-view">
       <p class="action-hint">Abstimmung läuft – Du beobachtest als Zuschauer.</p>
-      <div class="vote-progress-bar">
-        <span class="vote-progress-fill" style="width:${totalVoters > 0 ? (votedCount / totalVoters) * 100 : 0}%"></span>
-      </div>
-      <p class="muted" style="font-size:12px;margin:6px 0 16px;">${votedCount} von ${totalVoters} haben abgestimmt</p>
-      <div class="choice-grid">
-        ${targets.map((t) => {
-          const count = state.vote?.tally?.[t.id] || 0;
-          return `<div class="choice spectator-choice"><span>${esc(t.name)}</span>${count > 0 ? `<span class="vote-count">${count}</span>` : ''}</div>`;
+      <div class="vote-list">
+        ${alivePlayers.map((p) => {
+          const votes = state.vote?.tally?.[p.id] || 0;
+          const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+          return `<div class="vote-row">
+            <div class="vote-row-inner">
+              <span class="vote-row-name">${esc(p.name)}${state.mayorId === p.id ? ' <span class="mayor-tag">👑</span>' : ''}</span>
+              <span class="vote-row-count">${votes > 0 ? `${votes} Stimme${votes > 1 ? 'n' : ''}` : ''}</span>
+            </div>
+            ${votes > 0 ? `<div class="vote-bar"><div class="vote-bar-fill" style="width:${pct}%"></div></div>` : ''}
+          </div>`;
         }).join('')}
       </div>
+      <p class="muted" style="margin-top:8px;font-size:0.8rem;">${totalVotes} von ${alivePlayers.length} haben abgestimmt.</p>
     </div>`;
   }
   // Night spectator view: show who is currently acting

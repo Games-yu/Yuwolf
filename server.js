@@ -583,16 +583,26 @@ function dawn(l) {
   system(l, 'Der Nebel lichtet sich. DüsterWald erwacht langsam.');
   let deaths = 0;
   if (d.wolfTarget && !d.healed && d.wolfTarget !== d.protected) {
+    const wasWolf = find(l, d.wolfTarget)?.role === 'wolf';
     kill(l, d.wolfTarget, 'ist in der Nacht gestorben');
     deaths++;
+    if (wasWolf) {
+      const wolfCount = alive(l).filter(p => p.role === 'wolf').length;
+      system(l, `⚠️ Ein Werwolf ist gestorben! Noch ${wolfCount} Werwolf${wolfCount !== 1 ? 'e' : ''} im Dunkeln.`);
+    }
   } else if (d.wolfTarget && d.wolfTarget === d.protected) {
     system(l, 'Ein unsichtbarer Schild hat ein Leben bewahrt.');
   } else if (d.wolfTarget && d.healed) {
     system(l, 'Die Hexe hat das Opfer der Wölfe gerettet.');
   }
   if (d.poisonTarget) {
+    const wasWolf = find(l, d.poisonTarget)?.role === 'wolf';
     kill(l, d.poisonTarget, 'wurde vergiftet');
     deaths++;
+    if (wasWolf) {
+      const wolfCount = alive(l).filter(p => p.role === 'wolf').length;
+      system(l, `⚠️ Ein Werwolf wurde vom Gift erwischt! Noch ${wolfCount} Werwolf${wolfCount !== 1 ? 'e' : ''} im Dunkeln.`);
+    }
   }
   if (d.vampireTarget) {
     kill(l, d.vampireTarget, 'wurde vom Vampir heimgesucht');
@@ -677,7 +687,12 @@ function resolveVotes(l) {
     system(l, 'Das Dorf hat den Narren verurteilt – der Narr lacht zuletzt.');
     return setPhase(l, 'ended');
   }
+  const winnerRole = find(l, winner)?.role;
   kill(l, winner, `wurde mit ${votes} Stimme${votes === 1 ? '' : 'n'} verurteilt`);
+  if (winnerRole === 'wolf') {
+    const wolfCount = alive(l).filter(p => p.role === 'wolf').length;
+    system(l, `⚠️ Das Dorf hat einen Werwolf entlarvt! Noch ${wolfCount} Werwolf${wolfCount !== 1 ? 'e' : ''} im Dunkeln.`);
+  }
   // Notify the eliminated player with a personal popup
   io.to(winner).emit('game:privateResult', {
     title: 'Du wurdest verurteilt!',

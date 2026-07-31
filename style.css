@@ -1756,3 +1756,18 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
   vertical-align: middle;
   animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+
+/* --- Player stats (alive/dead counter) --- */
+.player-stats {
+  display: flex;
+  gap: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin: 4px 0 10px;
+  padding: 6px 8px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.stat-alive { color: #4caf50; }
+.stat-dead { color: #888; }
