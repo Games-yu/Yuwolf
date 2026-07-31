@@ -325,16 +325,13 @@ function dayCenter() {
                  .filter((p) => p.alive && p.id !== socket.id) // Removed self-voting in UI
                  .map((p) => {
                    const susCount = state.suspicions?.[p.id]?.length || 0;
-                   return `<button class="choice result-card alive ${selected === p.id ? 'active' : ''}" onclick="selectChoice('${p.id}', 'vote')">
+                   return `<button class="choice result-card alive" data-target="${p.id}" data-type="vote">
                      <div class="result-role-icon">${state.mayorId === p.id ? '👑' : '👤'}</div>
                      <div class="result-name">${esc(p.name)}</div>
                      ${susCount > 0 ? `<small class="dead-tag">${susCount} Verdacht</small>` : ''}
                    </button>`;
                  })
                  .join('')}
-             </div>
-             <div style="margin-top:15px">
-               ${button(state.phase === 'mayor_election' ? 'Bürgermeister wählen' : 'Verurteilen', 'button', 'act')}
              </div>`
           : ''
       }
@@ -711,10 +708,12 @@ function wireRender() {
   document.querySelector('#skip')?.addEventListener('click', () => {
     vision = null;
     socket.emit('game:skip');
+    render();
   });
   document.querySelector('#heal')?.addEventListener('click', () => {
     vision = null;
     socket.emit('game:action', { kind: 'heal' });
+    render();
   });
   document.querySelectorAll('[data-target]').forEach(
     (b) =>

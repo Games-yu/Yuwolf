@@ -229,10 +229,14 @@ function removePlayerFromLobby(l, playerId) {
 }
 function selectionView(l, player) {
   return l.selection?.actorIds?.includes(player.id)
-    ? {
+      ? {
         task: l.selection.task,
         targets: l.selection.targets,
         text: l.selection.text,
+        wolfTotalCount: l.selection.task === 'wolf' ? alive(l).filter((p) => p.role === 'wolf').length : null,
+        wolfVotedCount: l.selection.task === 'wolf' ? l.nightData?.wolfVotes?.size || 0 : null,
+        wolfVoteCast: l.selection.task === 'wolf' ? l.nightData?.wolfVotes?.has(player.id) : null,
+        wolfMyTarget: l.selection.task === 'wolf' ? l.nightData?.wolfVotes?.get(player.id) : null,
       }
     : null;
 }
