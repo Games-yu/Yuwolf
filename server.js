@@ -252,8 +252,9 @@ function playerView(l, player) {
       : null;
   const own =
     l.phase === 'lobby'
-      ? { role: null, alive: true }
+      ? { id: player.id, role: null, alive: true }
       : {
+          id: player.id,
           role,
           alive: player.alive,
           lover: l.lovers.includes(player.id) ? l.lovers.find((id) => id !== player.id) : null,
@@ -302,7 +303,7 @@ function playerView(l, player) {
     revealDone: l.revealed?.has(player.id) || false,
     revealedCount: l.revealed?.size || 0,
     vote:
-      l.phase === 'day'
+      ['day', 'mayor_election'].includes(l.phase)
         ? {
             cast: l.votes?.has(player.id) || false,
             count: l.votes?.size || 0,

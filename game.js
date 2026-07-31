@@ -318,26 +318,23 @@ function dayCenter() {
         }
       </p>
       ${
-        isVoting && !state.vote?.cast
-          ? `<p class="muted card-instruction">Tippe auf eine Person in der Liste, um sie auszuwählen.</p>
+        isVoting
+          ? `<p class="muted card-instruction">${state.vote?.cast ? 'Du kannst deine Stimme noch ändern.' : 'Tippe auf eine Person in der Liste, um abzustimmen.'}</p>
              <div class="choice-grid">
                ${state.players
-                 .filter((p) => p.alive && p.id !== socket.id) // Removed self-voting in UI
+                 .filter((p) => p.alive && p.id !== state.own?.id) // Prevent self-voting using persistent ID
                  .map((p) => {
-                   const susCount = state.suspicions?.[p.id]?.length || 0;
-                   return `<button class="choice result-card alive" data-target="${p.id}" data-type="vote">
+                   const isMyTarget = state.vote?.myTarget === p.id;
+                   const votes = state.vote?.tally?.[p.id] || 0;
+                   return `<button class="choice result-card alive ${isMyTarget ? 'active' : ''}" data-target="${p.id}" data-type="vote">
                      <div class="result-role-icon">${state.mayorId === p.id ? '👑' : '👤'}</div>
                      <div class="result-name">${esc(p.name)}</div>
-                     ${susCount > 0 ? `<small class="dead-tag">${susCount} Verdacht</small>` : ''}
+                     ${votes > 0 ? `<div class="vote-badge">${votes} Stimme${votes > 1 ? 'n' : ''}</div>` : ''}
                    </button>`;
                  })
                  .join('')}
-             </div>`
-          : ''
-      }
-      ${
-        state.vote?.cast
-          ? `<p class="muted">Du hast deine Wahl getroffen. Warte auf die anderen.</p>`
+             </div>
+             ${state.vote?.cast ? `<p class="muted">Warte auf die anderen (${state.vote.count} von ${state.players.filter(p=>p.alive).length} haben abgestimmt).</p>` : ''}`
           : ''
       }
     </div>

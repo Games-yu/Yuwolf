@@ -1627,3 +1627,18 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
   outline-offset: 2px;
 }
 
+.vote-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: var(--red);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 2px solid var(--surface);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+  pointer-events: none;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
