@@ -849,6 +849,15 @@ io.on('connection', (socket) => {
     }
     socket.emit('lobby:left');
   });
+  socket.on('game:wantRematch', () => {
+    // Any player can signal they want to play again
+    const l = lobbyFor(socket);
+    if (!l || l.phase !== 'ended') return;
+    const p = find(l, socket.id);
+    if (!p) return;
+    p.playAgain = true;
+    broadcast(l);
+  });
   socket.on('game:rematch', () => {
     const l = lobbyFor(socket);
     if (!l || l.hostId !== socket.id || l.phase !== 'ended')
@@ -856,13 +865,18 @@ io.on('connection', (socket) => {
     l.players.forEach((player) => {
       player.alive = true;
       player.ready = false;
+      player.playAgain = false;
       delete player.role;
     });
     l.night = 0;
     l.winner = null;
+    l.winners = null;
     l.selection = null;
     l.votes = new Map();
+    l.voteHistory = [];
     l.revealed = new Set();
+    l.nightData = {};
+    l.mayorId = null;
     system(l, 'Eine neue Runde von YuWolf wird vorbereitet.');
     setPhase(l, 'lobby');
   });

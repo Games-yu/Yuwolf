@@ -1793,3 +1793,15 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
 .vote-row-abstain { opacity: 0.7; border-style: dashed !important; }
 .vote-row-abstain:hover { opacity: 1; border-color: var(--border) !important; background: transparent !important; }
 .vote-row-abstain.active { opacity: 1; border-color: #888 !important; background: rgba(255,255,255,0.04) !important; }
+
+/* --- Wolf stat and waiting-for-host --- */
+.stat-wolf { color: #e57373; }
+.waiting-for-host {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 20px; border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  font-size: 0.9rem; color: var(--muted);
+}
+.spinner { display: inline-block; animation: spin 1.2s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }

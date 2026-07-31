@@ -184,7 +184,14 @@ function render() {
         ${!['lobby','ended'].includes(state.phase) ? (() => {
           const aliveCount = state.players.filter(p => p.alive).length;
           const deadCount = state.players.length - aliveCount;
-          return `<div class="player-stats"><span class="stat-alive">🟢 ${aliveCount} am Leben</span><span class="stat-dead">💀 ${deadCount} tot</span></div>`;
+          const wolfCount = state.players.filter(p => p.alive && p.role === 'wolf').length;
+          // Wolf count only visible to wolves (own.wolfTeam exists) or when game ended
+          const showWolves = (state.own?.role?.name === 'Werwolf' || state.own?.wolfTeam) && wolfCount > 0;
+          return `<div class="player-stats">
+            <span class="stat-alive">🟢 ${aliveCount} am Leben</span>
+            <span class="stat-dead">💀 ${deadCount} tot</span>
+            ${showWolves ? `<span class="stat-wolf">🐺 ${wolfCount} Wolf${wolfCount > 1 ? 'wolf' : ''}</span>` : ''}
+          </div>`;
         })() : ''}
         <ul class="players">${everyone}</ul>
       </article>
@@ -433,12 +440,15 @@ function endedCenter(own, isHost) {
     <div class="notice" style="margin-top:16px;">
       ${voteHistoryHtml}
       <div style="display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap;">
-        ${button(
-          own?.playAgain ? (isHost ? 'Runde starten...' : 'Warte auf Host...') : 'Nochmal spielen', 
-          'button' + (own?.playAgain ? ' secondary' : ''), 
-          'play-again', 
-          own?.playAgain && !isHost ? 'disabled' : ''
-        )}
+        ${(() => {
+          if (own?.playAgain && isHost) {
+            return button('Runde starten…', 'button', 'play-again');
+          } else if (own?.playAgain) {
+            return `<div class="waiting-for-host"><span class="spinner">&#9696;</span> Warte auf den Host…</div>`;
+          } else {
+            return button('Nochmal spielen', 'button', 'play-again');
+          }
+        })()}
         ${button('Zur Startseite', 'button secondary', 'home')}
       </div>
     </div>
@@ -819,7 +829,12 @@ function wireRender() {
     socket.emit('game:action', { target: 'none' });
   });
   document.querySelector('#play-again')?.addEventListener('click', () => {
-    socket.emit('game:playAgain');
+    const isHost = state?.hostId === socket.id;
+    if (isHost) {
+      socket.emit('game:rematch'); // Host starts the new round
+    } else {
+      socket.emit('game:wantRematch'); // Non-host signals readiness
+    }
   });
   document.querySelectorAll('.kick-btn').forEach(btn => {
     btn.onclick = (e) => {
