@@ -318,7 +318,7 @@ function dayCenter() {
         }
       </p>
       ${
-        isVoting && !state.vote
+        isVoting && !state.vote?.cast
           ? `<p class="muted card-instruction">Tippe auf eine Person in der Liste, um sie auszuwählen.</p>
              <div class="choice-grid">
                ${state.players
@@ -336,7 +336,7 @@ function dayCenter() {
           : ''
       }
       ${
-        state.vote
+        state.vote?.cast
           ? `<p class="muted">Du hast deine Wahl getroffen. Warte auf die anderen.</p>`
           : ''
       }

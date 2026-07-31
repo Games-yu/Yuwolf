@@ -1004,6 +1004,8 @@ io.on('connection', (socket) => {
       });
     } else if (s.task === 'witchhunter') {
       l.nightData.witchhunterTarget = target;
+      l.taskIndex++;
+      return nextTask(l);
     } else if (l.phase === 'hunter') {
       kill(l, target, 'wurde vom Jäger getroffen');
       const nextFn = s.next || (() => beginNight(l));
