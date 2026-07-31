@@ -1043,22 +1043,7 @@ io.on('connection', (socket) => {
       afterDeaths(l, nextFn);
     }
   });
-    const l = lobbyFor(socket);
-    const voter = l && find(l, socket.id);
-    if (!l || !voter || !voter.alive || l.phase !== 'day')
-      return error(socket, 'Die Abstimmung ist gerade nicht aktiv.');
-    // Prevent voting for yourself
-    if (target === socket.id) return error(socket, 'Du kannst nicht für dich selbst stimmen.');
-    if (!validTarget(l, target)) return error(socket, 'Ungültiges Ziel.');
-    l.votes.set(socket.id, target);
-    const required = alive(l).filter((p) => p.connected);
-    if (
-      [...l.votes.keys()].filter((id) => required.some((p) => p.id === id)).length >=
-      required.length
-    )
-      resolveVotes(l);
-    else broadcast(l);
-  });
+
   socket.on('day:mark', (target) => {
     const l = lobbyFor(socket);
     const voter = l && find(l, socket.id);
