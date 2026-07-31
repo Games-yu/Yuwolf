@@ -187,18 +187,24 @@ function removePlayerFromLobby(l, playerId) {
     s.data.lobbyCode = undefined;
   }
   
-  if (!l.players.length) {
+  if (!l.players.length || wasHost) {
+    // Host left or lobby is empty: close everything
     clearPhaseTimer(l);
+    if (l.players.length) {
+      // Notify remaining players that host left and lobby is closing
+      system(l, 'Der Host hat die Lobby verlassen. Die Lobby wird geschlossen.');
+      l.players.forEach((p) => {
+        const sock = io.sockets.sockets.get(p.id);
+        if (sock) {
+          sock.emit('lobby:closed', 'Der Host hat die Lobby verlassen.');
+          sock.leave(l.code);
+          sock.data.lobbyCode = undefined;
+        }
+      });
+    }
     lobbies.delete(l.code);
     emitList();
     return;
-  }
-  if (wasHost) {
-    const newHost = l.players.find((p) => p.connected) || l.players[0];
-    if (newHost) {
-      l.hostId = newHost.id;
-      system(l, `${newHost.name} ist jetzt Host.`);
-    }
   }
   system(l, `${player.name} hat Yu’s DüsterWald verlassen.`);
   if (l.phase === 'reveal') {
@@ -964,14 +970,17 @@ io.on('connection', (socket) => {
     } else if (s.task === 'vampire') {
       l.nightData.vampireTarget = target;
     } else if (s.task === 'thief') {
-      const stolenRole = find(l, target)?.role;
+      const stolenTarget = find(l, target);
+      const stolenRole = stolenTarget?.role;
       p.role = stolenRole || p.role;
+      // If thief copies witch, inherit current potion state
+      if (p.role === 'witch') l.potions = { ...l.potions };
       system(l, 'Die Diebin hat ein neues Schicksal angenommen.');
       const roleName = roleInfo[p.role]?.name || 'Dorfbewohner';
       socket.emit('game:privateResult', {
         title: 'Neues Schicksal',
         icon: roleInfo[p.role]?.icon || '👤',
-        text: `Du hast die Rolle von ${find(l, target)?.name} kopiert. Du bist jetzt: ${roleName}.`,
+        text: `Du hast die Rolle von ${stolenTarget?.name} kopiert. Du bist jetzt: ${roleName}.${p.role === 'witch' ? ` Heiltrank: ${l.potions.heal ? 'verfügbar' : 'verbraucht'}, Gifttrank: ${l.potions.poison ? 'verfügbar' : 'verbraucht'}.` : ''}`,
       });
     } else if (s.task === 'doppelganger') {
       p.copies = target;
@@ -1072,23 +1081,14 @@ io.on('connection', (socket) => {
       p.connected = false;
       broadcast(l);
     }
+    // 10 second grace period to reconnect, then remove player
     setTimeout(() => {
       const cur = lobbies.get(l.code);
       const disconnectedPlayer = cur && find(cur, socket.id);
       if (!cur || !disconnectedPlayer || disconnectedPlayer.connected) return;
-      if (cur.hostId === socket.id) {
-        const newHost = cur.players.find((x) => x.connected);
-        if (newHost) {
-          cur.hostId = newHost.id;
-          system(cur, `${newHost.name} ist jetzt Host.`);
-        }
-      }
-      if (cur.players.every((x) => !x.connected)) {
-        clearPhaseTimer(cur);
-        lobbies.delete(cur.code);
-      } else broadcast(cur);
-      emitList();
-    }, 120_000);
+      system(cur, `${disconnectedPlayer.name} wurde wegen Verbindungsverlust entfernt.`);
+      removePlayerFromLobby(cur, socket.id);
+    }, 10_000);
   });
 });
 server.listen(PORT, () => console.log(`YuWolf läuft auf Port ${PORT}`));

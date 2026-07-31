@@ -309,31 +309,39 @@ function dayCenter() {
 
   return `<div class="game"><div class="phase">${phaseTitle}</div>
     <div class="notice">
-      <h1>Das Dorf versammelt sich</h1>
+      <h1>${state.phase === 'mayor_election' ? 'Bürgermeisterwahl' : 'Das Dorf versammelt sich'}</h1>
       <p class="muted">
         ${
           isVoting
-            ? (state.phase === 'mayor_election' ? 'Wählt einen Bürgermeister.' : 'Wer soll verurteilt werden? Wähle mit Bedacht.')
-            : (state.phase === 'mayor_succession' ? 'Der Bürgermeister wählt seinen Nachfolger.' : 'Die Überlebenden diskutieren.')
+            ? (state.phase === 'mayor_election' ? 'Wählt einen Anführer für das Dorf.' : 'Wer soll heute verurteilt werden?')
+            : (state.phase === 'mayor_succession' ? 'Der Bürgermeister bestimmt seinen Nachfolger.' : 'Die Überlebenden diskutieren.')
         }
       </p>
       ${
         isVoting
-          ? `<p class="muted card-instruction">${state.vote?.cast ? 'Du kannst deine Stimme noch \u00e4ndern.' : 'Tippe auf eine Person, um abzustimmen.'}</p>
-             <div class="choice-grid">
-               ${state.players
-                 .filter((p) => p.alive && p.id !== state.own?.id)
-                 .map((p) => {
-                   const isMyTarget = state.vote?.myTarget === p.id;
-                   const votes = state.vote?.tally?.[p.id] || 0;
-                   return `<button class="choice vote-choice ${isMyTarget ? 'active' : ''}" data-target="${p.id}" data-type="vote">
-                     <span class="vote-name">${esc(p.name)}${state.mayorId === p.id ? ' <span class="mayor-tag">B\u00fcrgermeister</span>' : ''}</span>
-                     ${votes > 0 ? `<span class="vote-badge">${votes}</span>` : ''}
-                   </button>`;
-                 })
-                 .join('')}
-             </div>
-             ${state.vote?.cast ? `<p class="muted" style="margin-top:10px;">Warte auf die anderen (${state.vote.count} / ${state.players.filter(p=>p.alive).length}).</p>` : ''}`
+          ? (() => {
+              const alivePlayers = state.players.filter((p) => p.alive && p.id !== state.own?.id);
+              const totalVotes = state.vote?.count || 0;
+              return `
+              <div class="vote-list">
+                ${alivePlayers.map((p) => {
+                  const isMyTarget = state.vote?.myTarget === p.id;
+                  const votes = state.vote?.tally?.[p.id] || 0;
+                  const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+                  return `<button class="vote-row ${isMyTarget ? 'active' : ''}" data-target="${p.id}" data-type="vote">
+                    <div class="vote-row-inner">
+                      <span class="vote-row-name">${esc(p.name)}${state.mayorId === p.id ? ' <span class="mayor-tag">👑</span>' : ''}</span>
+                      <span class="vote-row-count">${votes > 0 ? `${votes} Stimme${votes > 1 ? 'n' : ''}` : ''}</span>
+                    </div>
+                    ${votes > 0 ? `<div class="vote-bar"><div class="vote-bar-fill" style="width:${pct}%"></div></div>` : ''}
+                  </button>`;
+                }).join('')}
+              </div>
+              <p class="muted vote-status">${state.vote?.cast
+                ? `✓ Deine Stimme: <strong>${esc(alivePlayers.find(p=>p.id===state.vote.myTarget)?.name || '–')}</strong> · ${totalVotes} von ${state.players.filter(p=>p.alive).length} haben abgestimmt`
+                : 'Tippe auf einen Namen, um abzustimmen.'
+              }</p>`;
+            })()
           : ''
       }
     </div>
@@ -862,6 +870,11 @@ socket.on('lobby:state', (s) => {
   cupidChoices = [];
   vision = null;
   render();
+});
+socket.on('lobby:closed', (reason) => {
+  state = null;
+  landing();
+  setTimeout(() => toast(reason || 'Die Lobby wurde geschlossen.'), 400);
 });
 socket.on('game:vision', (v) => {
   vision = v;
