@@ -247,6 +247,52 @@ header {
   line-height: 1.6;
   margin: 0 0 16px;
 }
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 30px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.hero { text-align: center; margin-bottom: 50px; }
+.hero h1 { font-family: 'Cinzel', serif; font-size: 3.5em; font-weight: 800; line-height: 1.1; margin: 10px 0 20px; color: var(--gold); }
+.hero p { color: var(--muted); font-size: 18px; max-width: 500px; margin: 0 auto; }
+.form { display: flex; flex-direction: column; gap: 12px; margin-top: 25px; }
+
+/* Name Input Group */
+.name-input-group {
+  display: flex;
+  gap: 8px;
+}
+.name-input-group .input {
+  flex: 1;
+}
+.random-name-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  padding: 0 12px;
+  font-size: 1.2rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.random-name-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: var(--gold);
+  transform: scale(1.05);
+}
+.random-name-btn:active {
+  transform: scale(0.95);
+}
+
+.max-player-options {
+  display: flex;
+  gap: 10px;
+}
 .phase {
   display: inline-flex;
   align-items: center;
