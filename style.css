@@ -1771,3 +1771,25 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
 }
 .stat-alive { color: #4caf50; }
 .stat-dead { color: #888; }
+
+/* --- End Screen --- */
+.end-screen { padding: 0; }
+.end-screen-header { text-align: center; padding: 24px 16px 12px; }
+.end-screen-icon { font-size: 3.5rem; margin-bottom: 8px; }
+.end-screen-title { font-size: 1.8rem; font-weight: 800; margin: 0 0 6px; background: linear-gradient(135deg, var(--gold), #ff9800); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.role-reveal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; padding: 4px 0 16px; }
+.role-reveal-card { background: var(--card); border: 2px solid var(--border); border-radius: 14px; padding: 14px 8px 10px; text-align: center; position: relative; transition: transform 0.2s; }
+.role-reveal-card.winner { border-color: var(--gold); box-shadow: 0 0 12px rgba(255,200,0,0.25); }
+.role-reveal-card.eliminated { opacity: 0.55; }
+.winner-crown { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 1.1rem; }
+.role-reveal-icon { font-size: 2rem; margin-bottom: 6px; }
+.role-reveal-name { font-weight: 700; font-size: 0.82rem; margin-bottom: 2px; word-break: break-word; }
+.role-reveal-role { font-size: 0.72rem; color: var(--gold); margin-bottom: 4px; }
+.role-reveal-status { font-size: 0.68rem; font-weight: 600; }
+.role-reveal-status.alive { color: #4caf50; }
+.role-reveal-status.dead { color: #888; }
+
+/* --- Abstain vote row --- */
+.vote-row-abstain { opacity: 0.7; border-style: dashed !important; }
+.vote-row-abstain:hover { opacity: 1; border-color: var(--border) !important; background: transparent !important; }
+.vote-row-abstain.active { opacity: 1; border-color: #888 !important; background: rgba(255,255,255,0.04) !important; }

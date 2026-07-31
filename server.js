@@ -244,6 +244,14 @@ function selectionView(l, player) {
         wolfVotedCount: l.selection.task === 'wolf' ? l.nightData?.wolfVotes?.size || 0 : null,
         wolfVoteCast: l.selection.task === 'wolf' ? l.nightData?.wolfVotes?.has(player.id) : null,
         wolfMyTarget: l.selection.task === 'wolf' ? l.nightData?.wolfVotes?.get(player.id) : null,
+        // Wolf tally – how many wolf votes each target has (visible to wolves)
+        wolfTally: l.selection.task === 'wolf' ? (() => {
+          const tally = {};
+          if (l.nightData?.wolfVotes) {
+            for (const t of l.nightData.wolfVotes.values()) tally[t] = (tally[t] || 0) + 1;
+          }
+          return tally;
+        })() : null,
         // Witch-specific: tell her who was attacked and if heal is available
         wolfTargetName: l.selection.task === 'witch' ? (find(l, l.nightData?.wolfTarget)?.name || null) : null,
         wolfTargetId: l.selection.task === 'witch' ? (l.nightData?.wolfTarget || null) : null,
@@ -658,6 +666,7 @@ function resolveMayorElection(l) {
 function resolveVotes(l) {
   const tally = new Map();
   for (const [voter, target] of l.votes.entries()) {
+    if (target === 'abstain') continue; // abstain votes don't count toward any player
     const weight = (voter === l.mayorId) ? 2 : 1;
     tally.set(target, (tally.get(target) || 0) + weight);
   }
@@ -905,15 +914,15 @@ io.on('connection', (socket) => {
     const l = lobbyFor(socket);
     if (!l || !['day', 'mayor_election'].includes(l.phase)) return;
     const p = find(l, socket.id);
-    if (!p || !p.alive || !validTarget(l, target))
-      return error(socket, 'Ungültige Aktion.');
-    if (target === socket.id) return error(socket, 'Du kannst nicht für dich selbst stimmen.');
-    
+    if (!p || !p.alive) return error(socket, 'Ungültige Aktion.');
+    // 'abstain' is a special target meaning the player chooses not to vote
+    if (target !== 'abstain') {
+      if (!validTarget(l, target)) return error(socket, 'Ungültiges Ziel.');
+      if (target === socket.id) return error(socket, 'Du kannst nicht für dich selbst stimmen.');
+    }
     l.votes.set(socket.id, target);
     
-    // Only resolve votes automatically if EVERY living player has voted
-    // If setting is mayor and we're at day vote, Mayor's vote isn't magically 2 people, 
-    // it's still 1 person voting, so we still expect alive(l).length votes.
+    // Resolve when every living player has cast a vote (including abstains)
     if (l.votes.size === alive(l).length) {
       if (l.phase === 'mayor_election') resolveMayorElection(l);
       else resolveVotes(l);
@@ -1075,8 +1084,15 @@ io.on('connection', (socket) => {
     const l = lobbyFor(socket);
     if (!l || !l.selection?.actorIds.includes(socket.id)) return;
     if (l.phase === 'night') {
-      if (l.selection.task === 'wolf')
-        return error(socket, 'Stimme mit dem Rudel über ein Ziel ab.');
+      if (l.selection.task === 'wolf') {
+        // Wolf abstains from voting this night
+        l.nightData.wolfVotes ??= new Map();
+        l.nightData.wolfVotes.set(socket.id, '__abstain__');
+        const requiredWolves = alive(l).filter((wolf) => wolf.role === 'wolf' && wolf.connected);
+        if (requiredWolves.every((wolf) => l.nightData.wolfVotes.has(wolf.id)))
+          return resolveWolfVotes(l);
+        return broadcast(l);
+      }
       l.selection.actorIds = l.selection.actorIds.filter((id) => id !== socket.id);
       if (l.selection.actorIds.length === 0) {
         l.taskIndex++;

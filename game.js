@@ -321,9 +321,57 @@ function dayCenter() {
   const phaseTitle = state.phase === 'mayor_election' ? 'Bürgermeisterwahl' 
                    : state.phase === 'mayor_succession' ? 'Bürgermeister-Nachfolge' 
                    : `Tag ${state.night || 1}`;
-                   
-  const isVoting = ['day', 'mayor_election'].includes(state.phase) && own?.alive;
-  const isSpectator = !own?.alive || state.phase === 'mayor_succession';
+
+  const isVoting = ['day', 'mayor_election'].includes(state.phase);
+  const canVote = isVoting && own?.alive;
+  const alivePlayers = state.players.filter((p) => p.alive);
+  const totalVotes = state.vote?.count || 0;
+
+  // Read-only vote list (for spectators, dead players, non-voting phases)
+  const readOnlyList = isVoting ? `
+    <div class="vote-list">
+      ${alivePlayers.map((p) => {
+        const votes = state.vote?.tally?.[p.id] || 0;
+        const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+        return `<div class="vote-row">
+          <div class="vote-row-inner">
+            <span class="vote-row-name">${esc(p.name)}${state.mayorId === p.id ? ' <span class="mayor-tag">👑</span>' : ''}</span>
+            <span class="vote-row-count">${votes > 0 ? `${votes} Stimme${votes > 1 ? 'n' : ''}` : ''}</span>
+          </div>
+          ${votes > 0 ? `<div class="vote-bar"><div class="vote-bar-fill" style="width:${pct}%"></div></div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+    <p class="muted vote-status">${totalVotes} von ${alivePlayers.length} haben abgestimmt.</p>` : '';
+
+  // Interactive vote list (alive voters)
+  const interactiveList = canVote ? (() => {
+    const votableTargets = alivePlayers.filter((p) => p.id !== state.own?.id);
+    return `
+    <div class="vote-list">
+      ${votableTargets.map((p) => {
+        const isMyTarget = state.vote?.myTarget === p.id;
+        const votes = state.vote?.tally?.[p.id] || 0;
+        const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
+        return `<button class="vote-row ${isMyTarget ? 'active' : ''}" data-target="${p.id}" data-type="vote">
+          <div class="vote-row-inner">
+            <span class="vote-row-name">${esc(p.name)}${state.mayorId === p.id ? ' <span class="mayor-tag">👑</span>' : ''}</span>
+            <span class="vote-row-count">${votes > 0 ? `${votes} Stimme${votes > 1 ? 'n' : ''}` : ''}</span>
+          </div>
+          ${votes > 0 ? `<div class="vote-bar"><div class="vote-bar-fill" style="width:${pct}%"></div></div>` : ''}
+        </button>`;
+      }).join('')}
+      <button class="vote-row vote-row-abstain ${state.vote?.myTarget === 'abstain' ? 'active' : ''}" data-target="abstain" data-type="vote">
+        <div class="vote-row-inner">
+          <span class="vote-row-name" style="opacity:0.6;font-style:italic;">Nicht abstimmen</span>
+        </div>
+      </button>
+    </div>
+    <p class="muted vote-status">${state.vote?.cast
+      ? `✓ Deine Stimme: <strong>${esc(state.vote.myTarget === 'abstain' ? 'Enthalten' : alivePlayers.find(p=>p.id===state.vote.myTarget)?.name || '–')}</strong> · ${totalVotes} von ${alivePlayers.length} haben abgestimmt`
+      : 'Tippe auf einen Namen, um abzustimmen.'
+    }</p>`;
+  })() : readOnlyList;
 
   return `<div class="game"><div class="phase">${phaseTitle}</div>
     <div class="notice">
@@ -335,33 +383,7 @@ function dayCenter() {
             : (state.phase === 'mayor_succession' ? 'Der Bürgermeister bestimmt seinen Nachfolger.' : 'Die Überlebenden diskutieren.')
         }
       </p>
-      ${
-        isVoting
-          ? (() => {
-              const alivePlayers = state.players.filter((p) => p.alive && p.id !== state.own?.id);
-              const totalVotes = state.vote?.count || 0;
-              return `
-              <div class="vote-list">
-                ${alivePlayers.map((p) => {
-                  const isMyTarget = state.vote?.myTarget === p.id;
-                  const votes = state.vote?.tally?.[p.id] || 0;
-                  const pct = totalVotes > 0 ? Math.round((votes / totalVotes) * 100) : 0;
-                  return `<button class="vote-row ${isMyTarget ? 'active' : ''}" data-target="${p.id}" data-type="vote">
-                    <div class="vote-row-inner">
-                      <span class="vote-row-name">${esc(p.name)}${state.mayorId === p.id ? ' <span class="mayor-tag">👑</span>' : ''}</span>
-                      <span class="vote-row-count">${votes > 0 ? `${votes} Stimme${votes > 1 ? 'n' : ''}` : ''}</span>
-                    </div>
-                    ${votes > 0 ? `<div class="vote-bar"><div class="vote-bar-fill" style="width:${pct}%"></div></div>` : ''}
-                  </button>`;
-                }).join('')}
-              </div>
-              <p class="muted vote-status">${state.vote?.cast
-                ? `✓ Deine Stimme: <strong>${esc(alivePlayers.find(p=>p.id===state.vote.myTarget)?.name || '–')}</strong> · ${totalVotes} von ${state.players.filter(p=>p.alive).length} haben abgestimmt`
-                : 'Tippe auf einen Namen, um abzustimmen.'
-              }</p>`;
-            })()
-          : ''
-      }
+      ${interactiveList}
     </div>
   </div>`;
 };
@@ -373,7 +395,7 @@ function endedCenter() {
     ? `<div class="vote-history-reveal">
         <div class="eyebrow" style="margin-bottom:10px;">Abstimmungschronik</div>
         ${voteHistory.map((r) => `<div class="vote-record">
-          <span class="vote-record-round">Tag ${r.round}</span>
+          <span class="vote-record-round">Tag ${r.day || r.round || ''}</span>
           <div class="vote-record-entries">${r.votes.map((v) => {
             const voter = state.players.find((p) => p.id === v.voter);
             const target = state.players.find((p) => p.id === v.target);
@@ -382,21 +404,32 @@ function endedCenter() {
         </div>`).join('')}
       </div>`
     : '';
-  return `<div class="game"><div class="phase">Die letzte Nacht ist vorbei</div>
-    <h1 class="title">${esc(state.winner)}</h1>
-    <div class="notice">
-      <p class="muted">Die Rollen werden enthüllt:</p>
-      <div class="choice-grid result-grid">
-        ${state.players.map((p) => {
-          const isWinner = state.winners?.includes(p.id);
-          return `<div class="choice result-card ${p.alive ? 'alive' : 'dead'} ${isWinner ? 'winner-card' : ''}">
-          <div class="result-role-icon">${p.role?.icon || '?'}</div>
-          <div class="result-name">${isWinner ? '🏆 ' : ''}${state.mayorId === p.id ? '👑 ' : ''}${esc(p.name)}</div>
-          <small>${p.role?.name || ''}</small>
-          <small class="${p.alive ? 'alive-tag' : 'dead-tag'}">${p.alive ? '✓ überlebt' : '☠ ausgeschieden'}</small>
-        </div>`
-        }).join('')}
-      </div>
+
+  const winnerText = state.winner || 'Spielende';
+  const isWolfWin = winnerText.toLowerCase().includes('werwolf') || winnerText.toLowerCase().includes('wolf');
+  const isVillageWin = winnerText.toLowerCase().includes('dorf') || winnerText.toLowerCase().includes('dorfbewohner');
+  const winIcon = isWolfWin ? '🐺' : isVillageWin ? '🏘️' : '✨';
+
+  return `<div class="game end-screen">
+    <div class="end-screen-header">
+      <div class="end-screen-icon">${winIcon}</div>
+      <h1 class="end-screen-title">${esc(winnerText)}</h1>
+      <p class="muted">Das Spiel ist vorbei. Hier sind alle Rollen:</p>
+    </div>
+    <div class="role-reveal-grid">
+      ${state.players.map((p) => {
+        const isWinner = state.winners?.includes(p.id);
+        const role = p.role; // server sends full role info when ended
+        return `<div class="role-reveal-card ${p.alive ? 'survived' : 'eliminated'} ${isWinner ? 'winner' : ''}">
+          ${isWinner ? '<div class="winner-crown">🏆</div>' : ''}
+          <div class="role-reveal-icon">${role?.icon || '👤'}</div>
+          <div class="role-reveal-name">${esc(p.name)}${state.mayorId === p.id ? ' 👑' : ''}</div>
+          <div class="role-reveal-role">${esc(role?.name || 'Dorfbewohner')}</div>
+          <div class="role-reveal-status ${p.alive ? 'alive' : 'dead'}">${p.alive ? '✓ Überlebt' : '☠️ Gestorben'}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="notice" style="margin-top:16px;">
       ${voteHistoryHtml}
       <div style="display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap;">
         ${button(
@@ -617,7 +650,6 @@ function buildWolfAction(targets, own) {
   const s = state.selection;
   const totalWolves = s?.wolfTotalCount || 1;
   const votedWolves = s?.wolfVotedCount || 0;
-  const hasCast = s?.wolfVoteCast || false;
   const myTarget = s?.wolfMyTarget || null;
 
   const wolfProgressBar = `<div class="wolf-vote-progress">
@@ -627,9 +659,27 @@ function buildWolfAction(targets, own) {
     <span class="vote-progress-label">${votedWolves} von ${totalWolves} Wölfen haben abgestimmt</span>
   </div>`;
 
-  return `<p class="action-hint">Wählt gemeinsam ein Opfer. Eure Abstimmung ist für das Rudel sichtbar.</p>
+  // Wolf-tally: show how many wolves voted for each target
+  const wolfTally = s?.wolfTally || {};
+  const wolfVoteList = `<div class="vote-list">
+    ${targets.map((t) => {
+      const votes = wolfTally[t.id] || 0;
+      const isMyVote = t.id === myTarget;
+      const pct = votedWolves > 0 ? Math.round((votes / votedWolves) * 100) : 0;
+      return `<button class="vote-row ${isMyVote ? 'active' : ''}" data-target="${t.id}" data-type="act">
+        <div class="vote-row-inner">
+          <span class="vote-row-name">${esc(t.name)}</span>
+          <span class="vote-row-count" style="color:#e57373;">${votes > 0 ? `${votes} Rudel-Stimme${votes > 1 ? 'n' : ''}` : ''}</span>
+        </div>
+        ${votes > 0 ? `<div class="vote-bar"><div class="vote-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,#b71c1c,#e53935);"></div></div>` : ''}
+      </button>`;
+    }).join('')}
+  </div>`;
+
+  return `<p class="action-hint">Wählt gemeinsam ein Opfer. Die meisten Rudel-Stimmen entscheiden.</p>
     ${wolfProgressBar}
-    ${targetButtons(targets, 'act')}`;
+    ${wolfVoteList}
+    ${button('Diese Nacht nicht angreifen', 'button secondary', 'skip')}`;
 }
 
 /* ─── Target Buttons ─── */
