@@ -227,26 +227,36 @@ function removePlayerFromLobby(l, playerId) {
   }
   broadcast(l);
 }
-function playerView(l, player) {
-  // Build wolf team list for wolf players
-  const wolfTeam =
-    player?.role === 'wolf'
-      ? l.players
-          .filter((p) => p.id !== player.id && p.role === 'wolf')
-          .map((p) => ({ id: p.id, name: p.name, alive: p.alive }))
-      : null;
-  const own = player
+function selectionView(l, player) {
+  return l.selection?.actorIds?.includes(player.id)
     ? {
-        role: player.role && roleInfo[player.role],
-        alive: player.alive,
-        lover: l.lovers.includes(player.id) ? l.lovers.find((id) => id !== player.id) : null,
-        witch: player.role === 'witch' ? { heal: l.potions.heal, poison: l.potions.poison } : null,
-        wolfTeam,
-        playAgain: player.playAgain,
+        task: l.selection.task,
+        targets: l.selection.targets,
+        text: l.selection.text,
       }
     : null;
-  // Anonymous tally: only counts, no voter identity during active vote
-  const anonymousTally = l.phase === 'day'
+}
+function playerView(l, player) {
+  const isHost = l.hostId === player.id;
+  const role = roleInfo[player.role];
+  const wolfTeam =
+    ['wolf', 'girl'].includes(player.role) || l.phase === 'ended'
+      ? alive(l)
+          .filter((p) => p.role === 'wolf' || p.id === player.id)
+          .map((p) => p.id)
+      : null;
+  const own =
+    l.phase === 'lobby'
+      ? { role: null }
+      : {
+          role,
+          lover: l.lovers.includes(player.id) ? l.lovers.find((id) => id !== player.id) : null,
+          witch: player.role === 'witch' ? { heal: l.potions.heal, poison: l.potions.poison } : null,
+          wolfTeam,
+          playAgain: player.playAgain,
+          isMayor: l.mayorId === player.id,
+        };
+  const anonymousTally = ['day', 'mayor_election'].includes(l.phase)
     ? Object.fromEntries(
         [...(l.votes?.values() || [])].reduce((counts, target) => {
           counts.set(target, (counts.get(target) || 0) + 1);
@@ -280,8 +290,9 @@ function playerView(l, player) {
     settings: l.settings,
     voteHistory: l.settings.voteReveal ? (l.voteHistory || []).slice(-8) : [],
     suspicions: Object.fromEntries(
-      [...(l.suspicions || [])].map(([id, voters]) => [id, voters.size]),
+      (l.suspicions ? [...l.suspicions.entries()] : []).map(([k, v]) => [k, Array.from(v)]),
     ),
+    mayorId: l.mayorId,
     revealDone: l.revealed?.has(player.id) || false,
     revealedCount: l.revealed?.size || 0,
     vote:
@@ -294,50 +305,6 @@ function playerView(l, player) {
           }
         : null,
   };
-}
-function selectionView(l, player) {
-  const selection = l.selection;
-  if (!selection) return null;
-  const isActor = selection.actorIds?.includes(player?.id);
-  // Dead hunter MUST still see and use their last shot even though !player.alive
-  const isDeadHunterActing = l.phase === 'hunter' && isActor;
-  // All other dead players and non-actors get a minimal spectator/waiting view
-  if ((!isActor || !player?.alive) && !isDeadHunterActing) {
-    return l.phase === 'night'
-      ? { task: 'waiting', actorIds: [], targets: [], text: 'Die Nacht ist still. Warte ab.' }
-      : { ...selection, actorIds: [], spectator: true };
-  }
-  const view = { ...selection };
-  if (selection.task === 'wolf') {
-    const votes = l.nightData?.wolfVotes || new Map();
-    const tally = new Map();
-    const votersMap = new Map();
-    const totalWolves = alive(l).filter((p) => p.role === 'wolf').length;
-    const votedCount = votes.size;
-    for (const [voterId, targetId] of votes.entries()) {
-      tally.set(targetId, (tally.get(targetId) || 0) + 1);
-      const voterPlayer = find(l, voterId);
-      if (voterPlayer) {
-        if (!votersMap.has(targetId)) votersMap.set(targetId, []);
-        votersMap.get(targetId).push(voterPlayer.name);
-      }
-    }
-    view.wolfVotes = Object.fromEntries(tally);
-    view.wolfVoters = Object.fromEntries(votersMap);
-    view.wolfVoteCast = votes.has(player.id);
-    view.wolfMyTarget = votes.get(player.id) || null;
-    view.wolfTotalCount = totalWolves;
-    view.wolfVotedCount = votedCount;
-  }
-  // Witch: show who the wolves attacked so she can decide to heal
-  if (selection.task === 'witch') {
-    const wolfTargetId = l.nightData?.wolfTarget || null;
-    view.wolfTargetId = wolfTargetId;
-    view.wolfTargetName = wolfTargetId ? (find(l, wolfTargetId)?.name || null) : null;
-    // Only show heal button if there is actually a wolf target AND potion is available
-    view.canHeal = !!(wolfTargetId && l.potions?.heal);
-  }
-  return view;
 }
 function broadcast(l) {
   l.players.forEach((p) => io.to(p.id).emit('lobby:state', playerView(l, p)));
@@ -492,10 +459,15 @@ function resolveWolfVotes(l) {
   nextTask(l);
 }
 function kill(l, id, reason) {
+  if (!validTarget(l, id)) return;
   const p = find(l, id);
-  if (!p || !p.alive) return;
+  if (!p) return;
   p.alive = false;
   system(l, `${p.name} ${reason}.`);
+  if (l.mayorId === id) {
+    l.deadMayor = id;
+    l.mayorId = null;
+  }
   const checkDoppel = (deadId, deadRole) => {
     for (const x of alive(l)) {
       if (x.role === 'doppelganger' && x.copies === deadId) {
@@ -554,6 +526,20 @@ function checkWinner(l) {
   return false;
 }
 function afterDeaths(l, next) {
+  if (l.deadMayor) {
+    const mayor = l.deadMayor;
+    l.deadMayor = null;
+    const targets = alive(l).map((p) => ({ id: p.id, name: p.name }));
+    if (targets.length) {
+      setPhase(l, 'mayor_succession', {
+        actorIds: [mayor],
+        text: 'Der Bürgermeister ist gestorben und muss einen Nachfolger bestimmen.',
+        targets,
+        next,
+      });
+      return;
+    }
+  }
   if (l.hunter) {
     const hunter = l.hunter;
     l.hunter = null;
@@ -600,7 +586,20 @@ function dawn(l) {
     deaths++;
   }
   if (deaths === 0) system(l, 'Diese Nacht ist niemand gestorben.');
-  afterDeaths(l, () => dayVote(l));
+  
+  if (l.settings.mayor && !l.mayorId && l.night === 1) {
+    afterDeaths(l, () => mayorElection(l));
+  } else {
+    afterDeaths(l, () => dayVote(l));
+  }
+}
+function mayorElection(l) {
+  l.votes = new Map();
+  system(l, 'Das Dorf wählt einen Bürgermeister!');
+  setPhase(l, 'mayor_election', {
+    text: 'Wählt einen Anführer. Stimmt im Chat ab.',
+    targets: alive(l).map((p) => ({ id: p.id, name: p.name })),
+  });
 }
 function dayVote(l) {
   l.votes = new Map();
@@ -611,14 +610,35 @@ function dayVote(l) {
     targets: alive(l).map((p) => ({ id: p.id, name: p.name })),
   });
 }
-function resolveVotes(l) {
+function resolveMayorElection(l) {
   const tally = new Map();
   for (const target of l.votes.values()) tally.set(target, (tally.get(target) || 0) + 1);
+  const sorted = [...tally.entries()].sort((a, b) => b[1] - a[1]);
+  if (!sorted.length) {
+    system(l, 'Das Dorf konnte sich auf keinen Bürgermeister einigen.');
+    return dayVote(l);
+  }
+  
+  // On a tie, pick one of the tied randomly
+  const topVotes = sorted[0][1];
+  const candidates = sorted.filter(x => x[1] === topVotes).map(x => x[0]);
+  const winner = candidates[Math.floor(Math.random() * candidates.length)];
+  
+  l.mayorId = winner;
+  system(l, `${find(l, winner)?.name} wurde zum Bürgermeister gewählt! (Stimme zählt doppelt)`);
+  dayVote(l);
+}
+function resolveVotes(l) {
+  const tally = new Map();
+  for (const [voter, target] of l.votes.entries()) {
+    const weight = (voter === l.mayorId) ? 2 : 1;
+    tally.set(target, (tally.get(target) || 0) + weight);
+  }
   const sorted = [...tally.entries()].sort((a, b) => b[1] - a[1]);
   const [winner, votes] = sorted[0] || [];
   const tied = sorted.length > 1 && sorted[1][1] === votes;
   const record = {
-    round: l.night,
+    day: l.night,
     votes: [...l.votes.entries()].map(([voter, target]) => ({ voter, target })),
     winner: winner || null,
     tied,
@@ -716,6 +736,9 @@ io.on('connection', (socket) => {
     if (!name) return error(socket, 'Bitte gib einen Spielernamen ein.');
     const existingPlayer = l.players.find((p) => normalizeName(p.name) === normalizeName(name));
     if (existingPlayer) {
+      if (l.phase === 'lobby') {
+        return error(socket, 'Dieser Name ist in der Lobby bereits vergeben. Bitte wähle einen anderen.');
+      }
       if (existingPlayer.connected) return error(socket, 'Dieser Name ist bereits online.');
       if (l.private && !passwordsMatch(l.passwordHash, String(data?.password || ''), l.code))
         return error(socket, 'Das Passwort ist nicht korrekt.');
@@ -848,6 +871,24 @@ io.on('connection', (socket) => {
       beginNight(l);
     } else broadcast(l);
   });
+  socket.on('game:vote', (target) => {
+    const l = lobbyFor(socket);
+    if (!l || !['day', 'mayor_election'].includes(l.phase)) return;
+    const p = find(l, socket.id);
+    if (!p || !p.alive || !validTarget(l, target))
+      return error(socket, 'Ungültige Aktion.');
+    if (target === socket.id) return error(socket, 'Du kannst nicht für dich selbst stimmen.');
+    
+    l.votes.set(socket.id, target);
+    
+    // Only resolve votes automatically if EVERY living player has voted
+    // If setting is mayor and we're at day vote, Mayor's vote isn't magically 2 people, 
+    // it's still 1 person voting, so we still expect alive(l).length votes.
+    if (l.votes.size === alive(l).length) {
+      if (l.phase === 'mayor_election') resolveMayorElection(l);
+      else resolveVotes(l);
+    } else broadcast(l);
+  });
   socket.on('game:action', (data) => {
     const l = lobbyFor(socket),
       p = l && find(l, socket.id);
@@ -963,6 +1004,11 @@ io.on('connection', (socket) => {
       kill(l, target, 'wurde vom Jäger getroffen');
       const nextFn = s.next || (() => beginNight(l));
       return afterDeaths(l, nextFn);
+    } else if (l.phase === 'mayor_succession') {
+      l.mayorId = target;
+      system(l, `${find(l, target)?.name} wurde als Nachfolger zum Bürgermeister bestimmt.`);
+      const nextFn = s.next || (() => beginNight(l));
+      return afterDeaths(l, nextFn); // Check if target immediately died somehow? Usually they are alive.
     } else {
       return error(socket, 'Diese Nachtaktion ist nicht verfügbar.');
     }
@@ -987,16 +1033,16 @@ io.on('connection', (socket) => {
       } else {
         broadcast(l);
       }
-    } else if (l.phase === 'day') {
+    } else if (l.phase === 'day' || l.phase === 'mayor_election') {
       system(l, 'Das Dorf konnte sich nicht einigen.');
-      beginNight(l);
+      if (l.phase === 'mayor_election') dayVote(l);
+      else beginNight(l);
     } else if (l.phase === 'hunter') {
       system(l, 'Der Jäger verzichtet auf seinen letzten Schuss.');
       const nextFn = l.selection?.next || (() => beginNight(l));
       afterDeaths(l, nextFn);
     }
   });
-  socket.on('game:vote', (target) => {
     const l = lobbyFor(socket);
     const voter = l && find(l, socket.id);
     if (!l || !voter || !voter.alive || l.phase !== 'day')

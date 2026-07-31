@@ -250,8 +250,8 @@ function roleCardSidebar(own) {
 
 /* ─── Phase Banner ─── */
 function buildPhaseBanner() {
-  if (!state || state.phase === 'lobby' || state.phase === 'ended' || state.phase === 'reveal') return '';
-  const isDay = state.phase === 'day';
+  if (state.phase === 'lobby' || state.phase === 'reveal') return '';
+  const isDay = state.phase === 'day' || state.phase === 'mayor_election' || state.phase === 'mayor_succession';
   const phaseIcon = isDay ? '☀' : '☾';
   const phaseLabel = isDay ? 'Tag' : 'Nacht';
   const task = state.selection?.task;
@@ -292,6 +292,61 @@ function lobbyCenter(isHost) {
   </div>`;
 }
 
+/* ─── Day Center ─── */
+function dayCenter() {
+  const own = state.players.find((p) => p.id === socket.id);
+  
+  if (state.phase === 'mayor_succession' && state.selection && state.selection.actorIds.includes(socket.id)) {
+    return nightAction(state.selection, own);
+  }
+  
+  const phaseTitle = state.phase === 'mayor_election' ? 'Bürgermeisterwahl' 
+                   : state.phase === 'mayor_succession' ? 'Bürgermeister-Nachfolge' 
+                   : `Tag ${state.night || 1}`;
+                   
+  const isVoting = ['day', 'mayor_election'].includes(state.phase) && own?.alive;
+  const isSpectator = !own?.alive || state.phase === 'mayor_succession';
+
+  return `<div class="game"><div class="phase">${phaseTitle}</div>
+    <div class="notice">
+      <h1>Das Dorf versammelt sich</h1>
+      <p class="muted">
+        ${
+          isVoting
+            ? (state.phase === 'mayor_election' ? 'Wählt einen Bürgermeister.' : 'Wer soll verurteilt werden? Wähle mit Bedacht.')
+            : (state.phase === 'mayor_succession' ? 'Der Bürgermeister wählt seinen Nachfolger.' : 'Die Überlebenden diskutieren.')
+        }
+      </p>
+      ${
+        isVoting && !state.vote
+          ? `<p class="muted card-instruction">Tippe auf eine Person in der Liste, um sie auszuwählen.</p>
+             <div class="choice-grid">
+               ${state.players
+                 .filter((p) => p.alive && p.id !== socket.id) // Removed self-voting in UI
+                 .map((p) => {
+                   const susCount = state.suspicions?.[p.id]?.length || 0;
+                   return `<button class="choice result-card alive ${selected === p.id ? 'active' : ''}" onclick="selectChoice('${p.id}', 'vote')">
+                     <div class="result-role-icon">${state.mayorId === p.id ? '👑' : '👤'}</div>
+                     <div class="result-name">${esc(p.name)}</div>
+                     ${susCount > 0 ? `<small class="dead-tag">${susCount} Verdacht</small>` : ''}
+                   </button>`;
+                 })
+                 .join('')}
+             </div>
+             <div style="margin-top:15px">
+               ${button(state.phase === 'mayor_election' ? 'Bürgermeister wählen' : 'Verurteilen', 'button', 'act')}
+             </div>`
+          : ''
+      }
+      ${
+        state.vote
+          ? `<p class="muted">Du hast deine Wahl getroffen. Warte auf die anderen.</p>`
+          : ''
+      }
+    </div>
+  </div>`;
+};
+
 /* ─── Ended Center ─── */
 function endedCenter() {
   const voteHistory = state.voteHistory || [];
@@ -317,7 +372,7 @@ function endedCenter() {
           const isWinner = state.winners?.includes(p.id);
           return `<div class="choice result-card ${p.alive ? 'alive' : 'dead'} ${isWinner ? 'winner-card' : ''}">
           <div class="result-role-icon">${p.role?.icon || '?'}</div>
-          <div class="result-name">${isWinner ? '🏆 ' : ''}${esc(p.name)}</div>
+          <div class="result-name">${isWinner ? '🏆 ' : ''}${state.mayorId === p.id ? '👑 ' : ''}${esc(p.name)}</div>
           <small>${p.role?.name || ''}</small>
           <small class="${p.alive ? 'alive-tag' : 'dead-tag'}">${p.alive ? '✓ überlebt' : '☠ ausgeschieden'}</small>
         </div>`
@@ -339,6 +394,12 @@ function endedCenter() {
 
 /* ─── Game Center ─── */
 function gameCenter(own, isHost, isSpectator) {
+  switch (state.phase) {
+    case 'day':
+    case 'mayor_election':
+    case 'mayor_succession':
+      return dayCenter();
+  }
   const s = state.selection;
   const active = s?.actorIds?.includes(socket.id);
   const targets = s?.targets || [];
