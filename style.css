@@ -511,6 +511,10 @@ header {
   border-color: #e54d4d66;
   background: #1c0a0a;
 }
+.players li.lover-ally {
+  border-color: #cc448866;
+  background: #1c0a13;
+}
 .players li.dead { opacity: 0.4; text-decoration: line-through; }
 .players li.offline { opacity: 0.35; font-style: italic; }
 .player-name { display: flex; align-items: center; gap: 5px; font-weight: 600; }
@@ -525,7 +529,7 @@ header {
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
-.wolf-tag { font-size: 12px; }
+.wolf-tag, .lover-tag { font-size: 12px; }
 
 /* ════════════════════════════════════════════════
    ROLE CARD SIDEBAR

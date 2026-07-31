@@ -144,9 +144,10 @@ function render() {
     .map((p) => {
       const isMe = p.id === socket.id;
       const isWolfTeam = own?.wolfTeam?.some((w) => w.id === p.id);
+      const isLover = own?.lover === p.id;
       const hostKick = (isHost && !isMe) ? ` <button class="kick-btn" data-kick="${p.id}" title="${esc(p.name)} entfernen">✕</button>` : '';
-      return `<li class="${!p.alive ? 'dead' : ''} ${!p.connected ? 'offline' : ''} ${isWolfTeam ? 'wolf-ally' : ''} ${isMe ? 'me' : ''}" title="${isWolfTeam ? '🐺 Dein Rudel-Mitglied' : ''}">
-        <span class="player-name">${p.host ? '♛ ' : ''}${esc(p.name)}${isMe ? ' <span class="me-tag">Ich</span>' : ''}${isWolfTeam ? ' <span class="wolf-tag">🐺</span>' : ''}</span>
+      return `<li class="${!p.alive ? 'dead' : ''} ${!p.connected ? 'offline' : ''} ${isWolfTeam ? 'wolf-ally' : ''} ${isLover ? 'lover-ally' : ''} ${isMe ? 'me' : ''}" title="${isWolfTeam ? '🐺 Dein Rudel-Mitglied' : isLover ? '💘 Deine große Liebe' : ''}">
+        <span class="player-name">${p.host ? '♛ ' : ''}${esc(p.name)}${isMe ? ' <span class="me-tag">Ich</span>' : ''}${isWolfTeam ? ' <span class="wolf-tag">🐺</span>' : ''}${isLover ? ' <span class="lover-tag">💘</span>' : ''}</span>
         <span class="player-status">${!p.connected ? '· getrennt' : !p.alive ? '· ☠' : p.ready && state.phase === 'lobby' ? '· ✓' : ''}${hostKick}</span>
       </li>`;
     })
@@ -229,7 +230,9 @@ function roleCardSidebar(own) {
     extra = `<div class="wolf-team-panel"><div class="wolf-team-label">🐺 Du bist allein im Rudel</div></div>`;
   }
   if (own.lover) {
-    extra += `<div class="lover-badge">💘 Du bist verliebt</div>`;
+    const partner = state.players.find((p) => p.id === own.lover);
+    const partnerName = partner ? partner.name : 'Unbekannt';
+    extra += `<div class="lover-badge">💘 Verliebt in ${esc(partnerName)}</div>`;
   }
   return `<div class="rolecard-side">
     <div class="role-icon-big">${r.icon}</div>

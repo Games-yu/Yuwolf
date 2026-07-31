@@ -239,7 +239,7 @@ function playerView(l, player) {
     ? {
         role: player.role && roleInfo[player.role],
         alive: player.alive,
-        lover: l.lovers.includes(player.id),
+        lover: l.lovers.includes(player.id) ? l.lovers.find((id) => id !== player.id) : null,
         witch: player.role === 'witch' ? { heal: l.potions.heal, poison: l.potions.poison } : null,
         wolfTeam,
       }
@@ -919,13 +919,17 @@ io.on('connection', (socket) => {
     } else if (s.task === 'doppelganger') {
       p.copies = target;
     } else if (s.task === 'girl') {
-      const wolves = alive(l)
-        .filter((player) => player.role === 'wolf')
-        .map((player) => player.name);
+      const wolves = alive(l).filter((player) => player.role === 'wolf');
+      let text = 'Die Nacht war zu dunkel, du konntest niemanden erkennen.';
+      if (wolves.length > 0) {
+        const wolf = wolves[Math.floor(Math.random() * wolves.length)];
+        const name = wolf.name;
+        text = `Du blinzelst durch deine Wimpern und erkennst einen Schatten... Ein Wolf hat einen Namen mit ${name.length} Buchstaben, der mit "${name[0].toUpperCase()}" beginnt.`;
+      }
       socket.emit('game:privateResult', {
         title: 'Blick in die Nacht',
         icon: '👁️',
-        text: `Das Rudel: ${wolves.join(', ') || 'niemand'}.`,
+        text: text,
       });
     } else if (s.task === 'witchhunter') {
       l.nightData.witchhunterTarget = target;
