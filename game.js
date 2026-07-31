@@ -169,7 +169,7 @@ function render() {
 
   let center;
   if (state.phase === 'lobby') center = lobbyCenter(isHost, own);
-  else if (state.phase === 'ended') center = endedCenter();
+  else if (state.phase === 'ended') center = endedCenter(own, isHost);
   else if (state.phase === 'reveal') center = revealCeremony();
   else center = gameCenter(own, isHost, isSpectator);
 
@@ -311,7 +311,7 @@ function lobbyCenter(isHost) {
 }
 
 /* ─── Day Center ─── */
-function dayCenter() {
+function dayCenter(isSpectator) {
   const own = state.players.find((p) => p.id === socket.id);
   
   if (state.phase === 'mayor_succession' && state.selection && state.selection.actorIds.includes(socket.id)) {
@@ -323,7 +323,8 @@ function dayCenter() {
                    : `Tag ${state.night || 1}`;
 
   const isVoting = ['day', 'mayor_election'].includes(state.phase);
-  const canVote = isVoting && own?.alive;
+  // Dead players and spectators see vote bars but cannot vote
+  const canVote = isVoting && own?.alive && !isSpectator;
   const alivePlayers = state.players.filter((p) => p.alive);
   const totalVotes = state.vote?.count || 0;
 
@@ -389,7 +390,7 @@ function dayCenter() {
 };
 
 /* ─── Ended Center ─── */
-function endedCenter() {
+function endedCenter(own, isHost) {
   const voteHistory = state.voteHistory || [];
   const voteHistoryHtml = voteHistory.length
     ? `<div class="vote-history-reveal">
@@ -450,7 +451,7 @@ function gameCenter(own, isHost, isSpectator) {
     case 'day':
     case 'mayor_election':
     case 'mayor_succession':
-      return dayCenter();
+      return dayCenter(isSpectator);
   }
   const s = state.selection;
   const active = s?.actorIds?.includes(socket.id);
