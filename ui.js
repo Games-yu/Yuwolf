@@ -105,6 +105,7 @@ function openRoleSettings() {
       `<label class="check"><input type="checkbox" value="${key}" ${chosen.has(key) ? 'checked' : ''}> ${icon} ${label}</label>`
     ).join('')}</div>
     <label class="check yu-rule"><input id="mayor-rule" type="checkbox" ${state.settings?.mayor ? 'checked' : ''}> 👑 Bürgermeisterwahl aktivieren</label>
+    <label class="check yu-rule"><input id="unlimited-time" type="checkbox" ${state.settings?.unlimitedTime ? 'checked' : ''}> ⏳ Unbegrenzte Zeit (Kein Timer)</label>
     <button id="save-settings" class="button">Regeln speichern</button>
   </div>`;
   document.body.appendChild(modal);
@@ -133,6 +134,7 @@ function openRoleSettings() {
     socket.emit('lobby:updateSettings', {
       roles,
       mayor: modal.querySelector('#mayor-rule').checked,
+      unlimitedTime: modal.querySelector('#unlimited-time').checked,
       houseRules: modal.querySelector('#house-rules').value,
       voteReveal: modal.querySelector('#vote-reveal').checked,
       theme: modal.querySelector('#theme-rule').value,

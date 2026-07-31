@@ -363,6 +363,8 @@ function gameCenter(own, isHost, isSpectator) {
     if (s.task === 'wolf') action = buildWolfAction(targets, own);
     else if (s.task === 'cupid')
       action = `<p class="action-hint">Wähle zwei Menschen, die miteinander verbunden werden.</p>${targetButtons(targets, 'love')}${button('Herzen verbinden', 'button', 'act')}`;
+    else if (s.task === 'girl')
+      action = `<p class="action-hint">Öffne heimlich die Augen und sammle Hinweise über das Rudel.</p>${button('Blinzeln', 'button', 'girl-act')}${button('Augen geschlossen halten', 'button secondary', 'skip')}`;
     else if (s.task === 'witch') {
       const victimName = s.wolfTargetName || null;
       const canHeal = s.canHeal && own.witch?.heal;
@@ -660,6 +662,9 @@ function wireRender() {
     socket.emit('game:action', { target: cupidChoices[0], second: cupidChoices[1] });
     cupidChoices = [];
     selected = null;
+  });
+  document.querySelector('#girl-act')?.addEventListener('click', () => {
+    socket.emit('game:action', { target: 'none' });
   });
   document.querySelectorAll('.kick-btn').forEach(btn => {
     btn.onclick = (e) => {

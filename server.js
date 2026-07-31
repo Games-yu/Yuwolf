@@ -386,7 +386,7 @@ function setPhase(l, phase, selection = null) {
   clearPhaseTimer(l);
   l.phase = phase;
   l.selection = selection;
-  const duration = phaseDuration(phase);
+  const duration = l.settings?.unlimitedTime ? null : phaseDuration(phase);
   if (duration) {
     l.phaseDeadline = Date.now() + duration;
     l.phaseTimer = setTimeout(() => handlePhaseTimeout(l, phase), duration);
@@ -738,6 +738,7 @@ io.on('connection', (socket) => {
     const requestedRoles = Array.isArray(data.roles) ? data.roles : [];
     l.settings.roles = [...new Set(requestedRoles.filter((role) => roleInfo[role]))];
     l.settings.mayor = !!data.mayor;
+    l.settings.unlimitedTime = !!data.unlimitedTime;
     l.settings.houseRules = String(data.houseRules || '')
       .trim()
       .slice(0, 700);
@@ -848,7 +849,7 @@ io.on('connection', (socket) => {
       target = String(data?.target || '');
     if (!s || !s.actorIds.includes(socket.id))
       return error(socket, 'Du bist gerade nicht an der Reihe.');
-    if (data?.kind !== 'heal' && data?.kind !== 'poison' && !s.targets?.some((t) => t.id === target))
+    if (data?.kind !== 'heal' && data?.kind !== 'poison' && s.task !== 'girl' && !s.targets?.some((t) => t.id === target))
       return error(socket, 'Ungültiges Ziel.');
     // For poison, target must be alive
     if (data?.kind === 'poison' && !validTarget(l, target))
@@ -914,17 +915,43 @@ io.on('connection', (socket) => {
     } else if (s.task === 'vampire') {
       l.nightData.vampireTarget = target;
     } else if (s.task === 'thief') {
-      p.role = find(l, target)?.role || p.role;
+      const stolenRole = find(l, target)?.role;
+      p.role = stolenRole || p.role;
       system(l, 'Die Diebin hat ein neues Schicksal angenommen.');
+      const roleName = roleInfo[p.role]?.name || 'Dorfbewohner';
+      socket.emit('game:privateResult', {
+        title: 'Neues Schicksal',
+        icon: roleInfo[p.role]?.icon || '👤',
+        text: `Du hast die Rolle von ${find(l, target)?.name} kopiert. Du bist jetzt: ${roleName}.`,
+      });
     } else if (s.task === 'doppelganger') {
       p.copies = target;
     } else if (s.task === 'girl') {
       const wolves = alive(l).filter((player) => player.role === 'wolf');
       let text = 'Die Nacht war zu dunkel, du konntest niemanden erkennen.';
       if (wolves.length > 0) {
-        const wolf = wolves[Math.floor(Math.random() * wolves.length)];
+        l.girlState = l.girlState || { targetId: null, hintLevel: 0 };
+        const currentTarget = find(l, l.girlState.targetId);
+        if (!currentTarget || !currentTarget.alive || currentTarget.role !== 'wolf') {
+           const wolf = wolves[Math.floor(Math.random() * wolves.length)];
+           l.girlState.targetId = wolf.id;
+           l.girlState.hintLevel = 1;
+        } else {
+           l.girlState.hintLevel++;
+        }
+        
+        const wolf = find(l, l.girlState.targetId);
         const name = wolf.name;
-        text = `Du blinzelst durch deine Wimpern und erkennst einen Schatten... Ein Wolf hat einen Namen mit ${name.length} Buchstaben, der mit "${name[0].toUpperCase()}" beginnt.`;
+        const level = l.girlState.hintLevel;
+        
+        if (level === 1) {
+           text = `Du blinzelst und erkennst einen Wolf... Sein Name hat ${name.length} Buchstaben und beginnt mit "${name[0].toUpperCase()}".`;
+        } else if (level === 2) {
+           text = `Der Wolf streift wieder umher... Sein Name endet auf "${name[name.length - 1].toUpperCase()}". (Tipp 1: ${name.length} Buchstaben, beginnt mit "${name[0].toUpperCase()}")`;
+        } else {
+           const middle = name.length > 2 ? name.substring(1, name.length - 1) : name;
+           text = `Du siehst ihn nun klarer... Weitere Buchstaben in seinem Namen sind: "${middle}". (Tipp 1: Beginnt mit "${name[0].toUpperCase()}", Tipp 2: Endet auf "${name[name.length - 1].toUpperCase()}")`;
+        }
       }
       socket.emit('game:privateResult', {
         title: 'Blick in die Nacht',
