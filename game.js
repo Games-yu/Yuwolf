@@ -148,12 +148,19 @@ function render() {
 
   const everyone = state.players
     .map((p) => {
-      const isMe = p.id === socket.id;
+      const isMe = p.id === state.own?.id;
       const isWolfTeam = own?.wolfTeam?.some((w) => w.id === p.id);
       const isLover = own?.lover === p.id;
-      const hostKick = (isHost && !isMe) ? ` <button class="kick-btn" data-kick="${p.id}" title="${esc(p.name)} entfernen">✕</button>` : '';
+      // Show kick button for host during lobby AND during the game
+      const canKick = isHost && !isMe && state.phase !== 'ended';
+      const hostKick = canKick ? ` <button class="kick-btn" data-kick="${p.id}" title="${esc(p.name)} entfernen">✕</button>` : '';
+      // Show own vote count during day/mayor vote
+      const myVoteCount = isMe && ['day','mayor_election'].includes(state.phase)
+        ? (state.vote?.tally?.[p.id] || 0)
+        : 0;
+      const voteTag = myVoteCount > 0 ? ` <span class="self-vote-tag">${myVoteCount} auf dich</span>` : '';
       return `<li class="${!p.alive ? 'dead' : ''} ${!p.connected ? 'offline' : ''} ${isWolfTeam ? 'wolf-ally' : ''} ${isLover ? 'lover-ally' : ''} ${isMe ? 'me' : ''}" title="${isWolfTeam ? '🐺 Dein Rudel-Mitglied' : isLover ? '💘 Deine große Liebe' : ''}">
-        <span class="player-name">${p.host ? '♛ ' : ''}${esc(p.name)}${isMe ? ' <span class="me-tag">Ich</span>' : ''}${isWolfTeam ? ' <span class="wolf-tag">🐺</span>' : ''}${isLover ? ' <span class="lover-tag">💘</span>' : ''}</span>
+        <span class="player-name">${p.host ? '♛ ' : ''}${esc(p.name)}${isMe ? ' <span class="me-tag">Ich</span>' : ''}${voteTag}${isWolfTeam ? ' <span class="wolf-tag">🐺</span>' : ''}${isLover ? ' <span class="lover-tag">💘</span>' : ''}</span>
         <span class="player-status">${!p.connected ? '· getrennt' : !p.alive ? '· ☠' : p.ready && state.phase === 'lobby' ? '· ✓' : ''}${hostKick}</span>
       </li>`;
     })
@@ -870,6 +877,11 @@ socket.on('lobby:state', (s) => {
   cupidChoices = [];
   vision = null;
   render();
+});
+socket.on('lobby:left', () => {
+  state = null;
+  landing();
+  setTimeout(() => toast('Du wurdest aus der Lobby entfernt.', 'error'), 300);
 });
 socket.on('lobby:closed', (reason) => {
   state = null;

@@ -1745,3 +1745,14 @@ body[data-theme="cyber"] .moon { background: #8cf4ff; }
   font-size: 0.85rem;
   opacity: 0.8;
 }
+.self-vote-tag {
+  background: rgba(220, 50, 50, 0.85);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 4px;
+  vertical-align: middle;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
