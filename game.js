@@ -676,10 +676,9 @@ function buildWolfAction(targets, own) {
     }).join('')}
   </div>`;
 
-  return `<p class="action-hint">Wählt gemeinsam ein Opfer. Die meisten Rudel-Stimmen entscheiden.</p>
+  return `<p class="action-hint">Wählt gemeinsam ein Opfer. Die meisten Rudel-Stimmen entscheiden. <strong>Ihr müsst jede Nacht jemanden wählen.</strong></p>
     ${wolfProgressBar}
-    ${wolfVoteList}
-    ${button('Diese Nacht nicht angreifen', 'button secondary', 'skip')}`;
+    ${wolfVoteList}`;
 }
 
 /* ─── Target Buttons ─── */

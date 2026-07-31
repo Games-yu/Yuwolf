@@ -1084,15 +1084,8 @@ io.on('connection', (socket) => {
     const l = lobbyFor(socket);
     if (!l || !l.selection?.actorIds.includes(socket.id)) return;
     if (l.phase === 'night') {
-      if (l.selection.task === 'wolf') {
-        // Wolf abstains from voting this night
-        l.nightData.wolfVotes ??= new Map();
-        l.nightData.wolfVotes.set(socket.id, '__abstain__');
-        const requiredWolves = alive(l).filter((wolf) => wolf.role === 'wolf' && wolf.connected);
-        if (requiredWolves.every((wolf) => l.nightData.wolfVotes.has(wolf.id)))
-          return resolveWolfVotes(l);
-        return broadcast(l);
-      }
+      if (l.selection.task === 'wolf')
+        return error(socket, 'Das Rudel muss jede Nacht ein Opfer w\u00e4hlen.');
       l.selection.actorIds = l.selection.actorIds.filter((id) => id !== socket.id);
       if (l.selection.actorIds.length === 0) {
         l.taskIndex++;
