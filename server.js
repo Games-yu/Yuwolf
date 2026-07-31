@@ -250,6 +250,7 @@ function playerView(l, player) {
       ? { role: null }
       : {
           role,
+          alive: player.alive,
           lover: l.lovers.includes(player.id) ? l.lovers.find((id) => id !== player.id) : null,
           witch: player.role === 'witch' ? { heal: l.potions.heal, poison: l.potions.poison } : null,
           wolfTeam,
