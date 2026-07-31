@@ -242,6 +242,7 @@ function playerView(l, player) {
         lover: l.lovers.includes(player.id) ? l.lovers.find((id) => id !== player.id) : null,
         witch: player.role === 'witch' ? { heal: l.potions.heal, poison: l.potions.poison } : null,
         wolfTeam,
+        playAgain: player.playAgain,
       }
     : null;
   // Anonymous tally: only counts, no voter identity during active vote
@@ -275,6 +276,7 @@ function playerView(l, player) {
     selection: selectionView(l, player),
     timer: l.phaseDeadline ? { deadline: l.phaseDeadline, phase: l.phase } : null,
     winner: l.winner,
+    winners: l.winners || [],
     settings: l.settings,
     voteHistory: l.settings.voteReveal ? (l.voteHistory || []).slice(-8) : [],
     suspicions: Object.fromEntries(
@@ -521,6 +523,7 @@ function checkWinner(l) {
   const piper = living.find((p) => p.role === 'piper');
   if (piper && living.filter((p) => p.id !== piper.id).every((p) => l.charmed.includes(p.id))) {
     l.winner = 'Der Flötenspieler gewinnt';
+    l.winners = [piper.id];
     return true;
   }
   if (
@@ -529,19 +532,23 @@ function checkWinner(l) {
     l.lovers.every((id) => living.some((p) => p.id === id))
   ) {
     l.winner = 'Das Liebespaar gewinnt';
+    l.winners = [...l.lovers];
     return true;
   }
-  const vampires = living.filter((p) => p.role === 'vampire').length;
-  if (vampires && vampires >= living.length - vampires) {
+  const vampires = living.filter((p) => p.role === 'vampire');
+  if (vampires.length && vampires.length >= living.length - vampires.length) {
     l.winner = 'Der Vampir gewinnt';
+    l.winners = vampires.map((v) => v.id);
     return true;
   }
   if (wolves === 0) {
     l.winner = 'Das Dorf gewinnt';
+    l.winners = l.players.filter((p) => p.role !== 'wolf' && p.role !== 'vampire' && p.role !== 'piper' && p.role !== 'fool').map((p) => p.id);
     return true;
   }
   if (wolves >= living.length - wolves) {
     l.winner = 'Die Werwölfe gewinnen';
+    l.winners = l.players.filter((p) => p.role === 'wolf').map((p) => p.id);
     return true;
   }
   return false;
@@ -629,6 +636,7 @@ function resolveVotes(l) {
   }
   if (find(l, winner)?.role === 'fool') {
     l.winner = 'Der Narr gewinnt';
+    l.winners = [winner];
     system(l, 'Das Dorf hat den Narren verurteilt – der Narr lacht zuletzt.');
     return setPhase(l, 'ended');
   }

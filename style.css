@@ -816,15 +816,19 @@ header {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 14px 10px;
-  border-radius: 10px;
-  background: #13172a;
-  border: 1px solid #ffffff18;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
   text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
-.result-card.dead { opacity: 0.5; }
-.result-role-icon { font-size: 32px; }
+.result-card.dead { opacity: 0.6; filter: grayscale(1); }
+.result-card.winner-card {
+  border-color: var(--gold);
+  background: rgba(229, 189, 104, 0.1);
+  box-shadow: 0 0 15px rgba(229, 189, 104, 0.2);
+}
+.result-role-icon { font-size: 32px; margin-bottom: 5px; }
 .result-name { font-size: 13px; font-weight: 700; }
 .result-card small { font-size: 10px; color: var(--muted); }
 .alive-tag { color: #6ee09e !important; }

@@ -307,15 +307,26 @@ function endedCenter() {
     <div class="notice">
       <p class="muted">Die Rollen werden enthüllt:</p>
       <div class="choice-grid result-grid">
-        ${state.players.map((p) => `<div class="choice result-card ${p.alive ? 'alive' : 'dead'}">
+        ${state.players.map((p) => {
+          const isWinner = state.winners?.includes(p.id);
+          return `<div class="choice result-card ${p.alive ? 'alive' : 'dead'} ${isWinner ? 'winner-card' : ''}">
           <div class="result-role-icon">${p.role?.icon || '?'}</div>
-          <div class="result-name">${esc(p.name)}</div>
+          <div class="result-name">${isWinner ? '🏆 ' : ''}${esc(p.name)}</div>
           <small>${p.role?.name || ''}</small>
           <small class="${p.alive ? 'alive-tag' : 'dead-tag'}">${p.alive ? '✓ überlebt' : '☠ ausgeschieden'}</small>
-        </div>`).join('')}
+        </div>`
+        }).join('')}
       </div>
       ${voteHistoryHtml}
-      ${button('Zur Startseite', 'button', 'home')}
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap;">
+        ${button(
+          own?.playAgain ? (isHost ? 'Runde starten...' : 'Warte auf Host...') : 'Nochmal spielen', 
+          'button' + (own?.playAgain ? ' secondary' : ''), 
+          'play-again', 
+          own?.playAgain && !isHost ? 'disabled' : ''
+        )}
+        ${button('Zur Startseite', 'button secondary', 'home')}
+      </div>
     </div>
   </div>`;
 }
@@ -665,6 +676,9 @@ function wireRender() {
   });
   document.querySelector('#girl-act')?.addEventListener('click', () => {
     socket.emit('game:action', { target: 'none' });
+  });
+  document.querySelector('#play-again')?.addEventListener('click', () => {
+    socket.emit('game:playAgain');
   });
   document.querySelectorAll('.kick-btn').forEach(btn => {
     btn.onclick = (e) => {
