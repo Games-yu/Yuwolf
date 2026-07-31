@@ -238,6 +238,10 @@ function selectionView(l, player) {
         wolfVotedCount: l.selection.task === 'wolf' ? l.nightData?.wolfVotes?.size || 0 : null,
         wolfVoteCast: l.selection.task === 'wolf' ? l.nightData?.wolfVotes?.has(player.id) : null,
         wolfMyTarget: l.selection.task === 'wolf' ? l.nightData?.wolfVotes?.get(player.id) : null,
+        // Witch-specific: tell her who was attacked and if heal is available
+        wolfTargetName: l.selection.task === 'witch' ? (find(l, l.nightData?.wolfTarget)?.name || null) : null,
+        wolfTargetId: l.selection.task === 'witch' ? (l.nightData?.wolfTarget || null) : null,
+        canHeal: l.selection.task === 'witch' ? (l.potions?.heal && !!l.nightData?.wolfTarget) : null,
       }
     : { task: l.selection?.task };
 }
@@ -903,7 +907,7 @@ io.on('connection', (socket) => {
       target = String(data?.target || '');
     if (!s || !s.actorIds.includes(socket.id))
       return error(socket, 'Du bist gerade nicht an der Reihe.');
-    if (data?.kind !== 'heal' && data?.kind !== 'poison' && s.task !== 'girl' && !s.targets?.some((t) => t.id === target))
+    if (data?.kind !== 'heal' && s.task !== 'girl' && !s.targets?.some((t) => t.id === target))
       return error(socket, 'Ungültiges Ziel.');
     // For poison, target must be alive
     if (data?.kind === 'poison' && !validTarget(l, target))

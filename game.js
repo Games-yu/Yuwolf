@@ -319,22 +319,21 @@ function dayCenter() {
       </p>
       ${
         isVoting
-          ? `<p class="muted card-instruction">${state.vote?.cast ? 'Du kannst deine Stimme noch ändern.' : 'Tippe auf eine Person in der Liste, um abzustimmen.'}</p>
+          ? `<p class="muted card-instruction">${state.vote?.cast ? 'Du kannst deine Stimme noch \u00e4ndern.' : 'Tippe auf eine Person, um abzustimmen.'}</p>
              <div class="choice-grid">
                ${state.players
-                 .filter((p) => p.alive && p.id !== state.own?.id) // Prevent self-voting using persistent ID
+                 .filter((p) => p.alive && p.id !== state.own?.id)
                  .map((p) => {
                    const isMyTarget = state.vote?.myTarget === p.id;
                    const votes = state.vote?.tally?.[p.id] || 0;
-                   return `<button class="choice result-card alive ${isMyTarget ? 'active' : ''}" data-target="${p.id}" data-type="vote">
-                     <div class="result-role-icon">${state.mayorId === p.id ? '👑' : '👤'}</div>
-                     <div class="result-name">${esc(p.name)}</div>
-                     ${votes > 0 ? `<div class="vote-badge">${votes} Stimme${votes > 1 ? 'n' : ''}</div>` : ''}
+                   return `<button class="choice vote-choice ${isMyTarget ? 'active' : ''}" data-target="${p.id}" data-type="vote">
+                     <span class="vote-name">${esc(p.name)}${state.mayorId === p.id ? ' <span class="mayor-tag">B\u00fcrgermeister</span>' : ''}</span>
+                     ${votes > 0 ? `<span class="vote-badge">${votes}</span>` : ''}
                    </button>`;
                  })
                  .join('')}
              </div>
-             ${state.vote?.cast ? `<p class="muted">Warte auf die anderen (${state.vote.count} von ${state.players.filter(p=>p.alive).length} haben abgestimmt).</p>` : ''}`
+             ${state.vote?.cast ? `<p class="muted" style="margin-top:10px;">Warte auf die anderen (${state.vote.count} / ${state.players.filter(p=>p.alive).length}).</p>` : ''}`
           : ''
       }
     </div>
