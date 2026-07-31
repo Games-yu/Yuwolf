@@ -858,9 +858,7 @@ io.on('connection', (socket) => {
   socket.on('game:start', () => {
     const l = lobbyFor(socket);
     if (!l || l.hostId !== socket.id) return error(socket, 'Nur der Host kann starten.');
-    if (l.players.some((player) => !player.ready || !player.connected))
-      return error(socket, 'Alle verbundenen Spielenden müssen zuerst bereit sein.');
-    if (!startGame(l)) error(socket, 'Mindestens 5 Personen werden benötigt.');
+    if (!startGame(l)) return error(socket, 'Mindestens 5 Personen werden benötigt.');
   });
   socket.on('reveal:done', () => {
     const l = lobbyFor(socket),
