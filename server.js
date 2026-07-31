@@ -888,18 +888,12 @@ io.on('connection', (socket) => {
         icon: isWolf ? '🐺' : '🔮',
         theme: isWolf ? 'is-wolf' : 'is-safe',
       });
-      l.taskIndex++;
-      return nextTask(l);
-    }
-    if (s.task === 'cupid') {
+    } else if (s.task === 'cupid') {
       if (!data.second || data.second === target || !alive(l).some((x) => x.id === data.second))
         return error(socket, 'Wähle zwei unterschiedliche Personen.');
       l.lovers = [target, data.second];
       system(l, 'Zwei Herzen wurden verbunden.');
-      l.taskIndex++;
-      return nextTask(l);
-    }
-    if (s.task === 'witch') {
+    } else if (s.task === 'witch') {
       if (data.kind === 'heal') {
         const victim = l.nightData.wolfTarget;
         if (l.potions.heal && victim) {
@@ -913,10 +907,7 @@ io.on('connection', (socket) => {
         l.potions.poison = false;
         l.nightData.poisonTarget = target;
       } else return error(socket, 'Dieser Trank ist nicht verfügbar.');
-      l.taskIndex++;
-      return nextTask(l);
-    }
-    if (s.task === 'guardian') {
+    } else if (s.task === 'guardian') {
       l.nightData.protected = target;
     } else if (s.task === 'piper') {
       if (!l.charmed.includes(target)) l.charmed.push(target);
@@ -975,8 +966,13 @@ io.on('connection', (socket) => {
     } else {
       return error(socket, 'Diese Nachtaktion ist nicht verfügbar.');
     }
-    l.taskIndex++;
-    return nextTask(l);
+    
+    s.actorIds = s.actorIds.filter((id) => id !== socket.id);
+    if (s.actorIds.length === 0) {
+      l.taskIndex++;
+      return nextTask(l);
+    }
+    return broadcast(l);
   });
   socket.on('game:skip', () => {
     const l = lobbyFor(socket);
@@ -984,8 +980,13 @@ io.on('connection', (socket) => {
     if (l.phase === 'night') {
       if (l.selection.task === 'wolf')
         return error(socket, 'Stimme mit dem Rudel über ein Ziel ab.');
-      l.taskIndex++;
-      nextTask(l);
+      l.selection.actorIds = l.selection.actorIds.filter((id) => id !== socket.id);
+      if (l.selection.actorIds.length === 0) {
+        l.taskIndex++;
+        nextTask(l);
+      } else {
+        broadcast(l);
+      }
     } else if (l.phase === 'day') {
       system(l, 'Das Dorf konnte sich nicht einigen.');
       beginNight(l);
