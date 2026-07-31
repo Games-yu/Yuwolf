@@ -1015,7 +1015,14 @@ io.on('connection', (socket) => {
         title: 'Blick in die Nacht',
         icon: '👁️',
         text: text,
+        requireAck: true,  // client must send game:girlDone to advance
       });
+      // Remove this girl from actorIds and advance ONLY when they acknowledge
+      s.actorIds = s.actorIds.filter((id) => id !== socket.id);
+      if (s.actorIds.length === 0) {
+        l.selection._girlPendingAck = socket.id; // mark waiting for ack
+      }
+      return broadcast(l);
     } else if (s.task === 'witchhunter') {
       l.nightData.witchhunterTarget = target;
       l.taskIndex++;
@@ -1039,6 +1046,15 @@ io.on('connection', (socket) => {
       return nextTask(l);
     }
     return broadcast(l);
+  });
+  socket.on('game:girlDone', () => {
+    const l = lobbyFor(socket);
+    if (!l || l.phase !== 'night') return;
+    if (l.selection?._girlPendingAck === socket.id) {
+      l.selection._girlPendingAck = null;
+      l.taskIndex++;
+      nextTask(l);
+    }
   });
   socket.on('game:skip', () => {
     const l = lobbyFor(socket);

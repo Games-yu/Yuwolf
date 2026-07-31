@@ -896,16 +896,22 @@ function showPrivateResult(result) {
   const text = document.createElement('p');
   text.textContent = result?.text || '';
   const hint = document.createElement('small');
-  hint.textContent = 'Dieses Wissen gehört nur dir.';
+  hint.textContent = result?.requireAck ? 'Bestätige, um die Nacht fortzusetzen.' : 'Dieses Wissen gehört nur dir.';
   const close = document.createElement('button');
   close.type = 'button';
   close.className = 'button';
-  close.textContent = 'Verstanden';
-  close.onclick = () => modal.remove();
+  close.textContent = result?.requireAck ? 'Augen schließen & weiter' : 'Verstanden';
+  close.onclick = () => {
+    modal.remove();
+    if (result?.requireAck) {
+      socket.emit('game:girlDone');
+    }
+  };
   card.append(icon, title, text, hint, close);
   modal.append(card);
   modal.onclick = (event) => {
-    if (event.target === modal) modal.remove();
+    // For requireAck modals, clicking outside does NOT close (must use button)
+    if (!result?.requireAck && event.target === modal) modal.remove();
   };
   document.body.append(modal);
   close.focus();
