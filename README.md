@@ -1,111 +1,122 @@
-# YuWolf — Yu's DüsterWald
+# 🐺 YuWolf – Yu's DüsterWald
 
-**YuWolf — Yu's DüsterWald** is a real-time multiplayer social-deduction game built with Node.js, Express, and Socket.IO. Players create or join a village, receive secret roles, survive the night, and work together to identify the wolves before the village falls apart.
+A real-time multiplayer **Werewolf / Werwolf** browser game built with Node.js, Socket.IO and vanilla HTML/CSS/JS. Play directly in your browser — no app download required.
 
-YuWolf is designed for community game nights and private friend groups. The server manages roles, votes, night actions, and lobby state so secret information is not exposed to other players in the browser.
+🌐 **Live at:** [yuwolf.onrender.com](https://yuwolf.onrender.com)
 
-> **Language notice:** This README is written in English, but the game interface and all in-game text are currently available in **German only**. An English game interface has not been implemented yet.
-
-## Technology Stack
-
-**Runtime and Server** Node.js, Express, Socket.IO
-
-**Client** Vanilla JavaScript, HTML5, CSS3
-
-**Deployment** Render
-
-**Code Formatting** Prettier
+---
 
 ## Features
 
-- Real-time multiplayer villages with public and private lobbies
-- Password-protected private lobbies and shareable invite links
-- Public lobby browser with player counts and direct joining
-- Dedicated host controls for roles, house rules, themes, ready checks, and player moderation
-- Random server-side role distribution with private role cards
-- Classic Werewolf roles and YuWolf special roles, including Seer, Witch, Hunter, Cupid, Guardian, Fool, Piper, Vampire, and more
-- Private night actions with server-side validation
-- Day chat, emoji reactions, suspicion markers, and village voting
-- Optional visible vote history and custom house rules
-- Private player notes stored locally in the browser
-- Reconnection support for short connection interruptions
-- End-of-round winner screen with revealed roles
-- Four visual village themes: Forest, Abandoned School, Fairy Tale Village, and Cyber-DüsterWald
-- Responsive layout for desktop and mobile players
-- No bots — YuWolf is built for real community games
+- 🎮 **Full game loop** — Lobby → Night → Day → Repeat → End screen with role reveal
+- 🐺 **All roles implemented** — Werewolf, Villager, Seer, Witch, Hunter, Cupid, Thief, Guardian, Vampire, Piper, Witch Hunter, Doppelganger (Girl), Weirdo, Fool, Mayor
+- 🗳️ **Day voting** — Live vote bars, abstain option, mayor double-vote, tie handling
+- 🌙 **Night phase** — Each role acts in order; wolves vote together, most votes wins
+- 💀 **Spectator mode** — Dead players watch with full vote visibility
+- 🔄 **Reconnect** — 10-second grace period to rejoin after disconnect
+- 👑 **Host controls** — Kick players anytime, start rematch, manage lobby settings
+- 📊 **Live stats** — Alive / dead / wolf count shown to all players
+- ⚠️ **Wolf death alerts** — Whole village is notified when a wolf is eliminated
+- 🏆 **End screen** — Role reveal grid for every player with winner highlights
+- 📱 **Mobile-friendly** — Responsive layout for phones and tablets
 
-## Requirements
+---
 
-- Node.js 20 or newer
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Runtime | Node.js |
+| Real-time | Socket.IO |
+| Frontend | Vanilla HTML, CSS, JavaScript |
+| Hosting | [Render](https://render.com) (Web Service) |
+
+---
+
+## Local Development
+
+### Prerequisites
+- Node.js 18+
 - npm
 
-## Run Locally
+### Setup
 
-1. Install dependencies:
+```bash
+# Clone the repo
+git clone https://github.com/j4yac3/YuWolf.git
+cd YuWolf
 
-   ```bash
-   npm install
-   ```
+# Install dependencies
+npm install
 
-2. Start the server:
-
-   ```bash
-   npm start
-   ```
-
-3. Open the game in your browser:
-
-   ```text
-   http://localhost:3000
-   ```
-
-If PowerShell blocks `npm`, use:
-
-```powershell
-npm.cmd start
+# Start the server
+node server.js
 ```
 
-If port `3000` is already in use, choose another port:
+Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
-```powershell
-$env:PORT=3001
-npm start
-```
+---
 
-Then open `http://localhost:3001`.
+## Deploying to Render
 
-## Deploy on Render
+This project is configured for easy deployment on [Render](https://render.com).
 
-YuWolf uses Socket.IO and needs a continuously running Node.js server. Render is a suitable deployment option.
+1. **Fork or push** this repository to GitHub.
+2. Go to [render.com](https://render.com) → **New → Web Service**.
+3. Connect your GitHub repository.
+4. Set the following:
+   | Setting | Value |
+   |---------|-------|
+   | **Environment** | Node |
+   | **Build Command** | `npm install` |
+   | **Start Command** | `node server.js` |
+   | **Instance Type** | Free (or higher for better performance) |
+5. Click **Deploy** — Render will build and host your app automatically.
 
-1. Push the project to a GitHub repository.
-2. Sign in to [Render](https://render.com) and click **New > Web Service**.
-3. Select **Build and deploy from a Git repository** and connect your GitHub repository.
-4. Set the **Build Command** to `npm install`.
-5. Set the **Start Command** to `npm start`.
-6. Choose the **Node** runtime.
-7. Click **Create Web Service**.
-8. Once deployed, Render will generate a public URL (e.g., `yuwolf.onrender.com`). Open this URL and share it with your players.
+> **Note:** The free Render tier spins down after 15 minutes of inactivity. The first request after sleep may take ~30 seconds to respond. Upgrade to a paid plan for always-on hosting.
+
+---
+
+## Game Roles
+
+| Role | Team | Description |
+|------|------|-------------|
+| 🐺 Werwolf | Wolf | Kills one villager each night |
+| 🧑‍🌾 Dorfbewohner | Village | No special ability — vote wisely! |
+| 🔮 Seherin | Village | Learns one player's role each night |
+| ⚗️ Hexe | Village | Has one heal potion and one poison potion |
+| 🏹 Jäger | Village | Takes one player with them when eliminated |
+| 💘 Amor | Village | Links two players as lovers |
+| 🗝️ Diebin | Village | Can steal a role from the draw pile |
+| 🛡️ Schutzgeist | Village | Protects one player per night |
+| 🧛 Vampir | Village/Neutral | Converts a player to their cause |
+| 🎶 Flötenspieler | Neutral | Enchants players; wins when all are enchanted |
+| 🔥 Hexenjäger | Village | Can eliminate the witch at night |
+| 🎭 Doppelgänger | Neutral | Copies another player's role |
+| 👁️ Mädchen | Village | Peeks during the wolf phase |
+| 🃏 Narr | Neutral | Wins if voted out by the village |
+| 👑 Bürgermeister | — | Elected role; vote counts double |
+
+---
 
 ## Project Structure
 
-```text
-server.js       Socket.IO server, lobby handling, and game rules
-werwolf.html    Main game interface
-game.js         Browser game and lobby logic
-ui.js           UI helpers, dialogs, invite flow, and role settings
-style.css       Responsive styling, cards, and visual themes
-package.json    Dependencies and npm scripts
+```
+YuWolf/
+├── server.js        # Express + Socket.IO game server
+├── game.js          # Client-side game logic & rendering
+├── index.html       # Main HTML shell
+├── style.css        # All styles (dark theme, animations)
+├── package.json
+└── README.md
 ```
 
-## Notes
-
-- The host manages the lobby but plays normally once the match starts.
-- Secret roles and night actions are only handled by the server.
-- Private lobby passwords are stored as hashes in server memory.
-- Lobbies and active games are reset when the server restarts or is redeployed.
-- The game is designed for entertainment and does not use real money.
+---
 
 ## License
 
-This project currently has no explicit license. Do not reuse or redistribute it without permission from the project owner.
+MIT — feel free to use, modify and host your own version.
+
+---
+
+*Made with ❤️ for Yu's DüsterWald*

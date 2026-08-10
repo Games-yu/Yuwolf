@@ -185,12 +185,10 @@ function render() {
           const aliveCount = state.players.filter(p => p.alive).length;
           const deadCount = state.players.length - aliveCount;
           const wolfCount = state.players.filter(p => p.alive && p.role === 'wolf').length;
-          // Wolf count only visible to wolves (own.wolfTeam exists) or when game ended
-          const showWolves = (state.own?.role?.name === 'Werwolf' || state.own?.wolfTeam) && wolfCount > 0;
           return `<div class="player-stats">
             <span class="stat-alive">🟢 ${aliveCount} am Leben</span>
             <span class="stat-dead">💀 ${deadCount} tot</span>
-            ${showWolves ? `<span class="stat-wolf">🐺 ${wolfCount} Wolf${wolfCount > 1 ? 'wolf' : ''}</span>` : ''}
+            ${wolfCount > 0 ? `<span class="stat-wolf">🐺 ${wolfCount} Werwolf${wolfCount > 1 ? 'e' : ''}</span>` : '<span class="stat-wolf" style="opacity:0.4;">🐺 0 Werwölfe</span>'}
           </div>`;
         })() : ''}
         <ul class="players">${everyone}</ul>
