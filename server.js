@@ -488,7 +488,8 @@ function kill(l, id, reason) {
   const p = find(l, id);
   if (!p) return;
   p.alive = false;
-  system(l, `${p.name} ${reason}.`);
+  const revealedRole = roleInfo[p.role]?.name || p.role || 'Unbekannt';
+  system(l, `${p.name} ${reason}. Rolle: ${revealedRole}.`);
   if (l.mayorId === id) {
     l.deadMayor = id;
     l.mayorId = null;
@@ -507,7 +508,8 @@ function kill(l, id, reason) {
     const lover = find(l, other);
     if (lover?.alive) {
       lover.alive = false;
-      system(l, `${lover.name} stirbt an gebrochenem Herzen.`);
+      const loverRole = roleInfo[lover.role]?.name || lover.role || 'Unbekannt';
+      system(l, `${lover.name} stirbt an gebrochenem Herzen. Rolle: ${loverRole}.`);
       checkDoppel(lover.id, lover.role);
       if (lover.role === 'hunter') l.hunter = lover.id;
     }
@@ -815,9 +817,7 @@ io.on('connection', (socket) => {
       .trim()
       .slice(0, 700);
     l.settings.voteReveal = data.voteReveal !== false;
-    l.settings.theme = ['forest', 'school', 'fairy', 'cyber'].includes(data.theme)
-      ? data.theme
-      : 'forest';
+    l.settings.theme = 'forest';
     system(l, 'Die Rollenregeln wurden vom Host aktualisiert.');
     broadcast(l);
   });
@@ -1096,8 +1096,9 @@ io.on('connection', (socket) => {
   });
   socket.on('game:skip', () => {
     const l = lobbyFor(socket);
-    if (!l || !l.selection?.actorIds.includes(socket.id)) return;
+    if (!l) return;
     if (l.phase === 'night') {
+      if (!l.selection?.actorIds.includes(socket.id)) return;
       if (l.selection.task === 'wolf')
         return error(socket, 'Das Rudel muss jede Nacht ein Opfer w\u00e4hlen.');
       l.selection.actorIds = l.selection.actorIds.filter((id) => id !== socket.id);
@@ -1108,10 +1109,12 @@ io.on('connection', (socket) => {
         broadcast(l);
       }
     } else if (l.phase === 'day' || l.phase === 'mayor_election') {
+      if (l.hostId !== socket.id) return;
       system(l, 'Das Dorf konnte sich nicht einigen.');
       if (l.phase === 'mayor_election') dayVote(l);
       else beginNight(l);
     } else if (l.phase === 'hunter') {
+      if (!l.selection?.actorIds.includes(socket.id)) return;
       system(l, 'Der Jäger verzichtet auf seinen letzten Schuss.');
       const nextFn = l.selection?.next || (() => beginNight(l));
       afterDeaths(l, nextFn);

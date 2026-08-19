@@ -118,9 +118,6 @@ function openRoleSettings() {
   extras.innerHTML = `
     <label class="yu-field">Themenraum<select id="theme-rule">
       <option value="forest">Klassischer Wald</option>
-      <option value="school">Verlassene Schule</option>
-      <option value="fairy">Märchendorf</option>
-      <option value="cyber">Cyber-DüsterWald</option>
     </select></label>
     <label class="check yu-rule"><input id="vote-reveal" type="checkbox" ${state.settings?.voteReveal !== false ? 'checked' : ''}> Abstimmungsverlauf nach dem Tag zeigen</label>
     <label class="yu-field">Hausregeln<textarea id="house-rules" maxlength="700" placeholder="z. B. Keine Rollenbehauptungen vor Tag 2.">${state.settings?.houseRules || ''}</textarea></label>

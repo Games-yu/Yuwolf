@@ -318,6 +318,7 @@ function lobbyCenter(isHost) {
 /* ─── Day Center ─── */
 function dayCenter(isSpectator) {
   const own = state.players.find((p) => p.id === socket.id);
+  const isHost = state.hostId === socket.id;
   
   if (state.phase === 'mayor_succession' && state.selection && state.selection.actorIds.includes(socket.id)) {
     return nightAction(state.selection, own);
@@ -390,6 +391,7 @@ function dayCenter(isSpectator) {
         }
       </p>
       ${interactiveList}
+      ${isVoting && isHost ? `<div style="margin-top:12px;">${button('Tag überspringen', 'button secondary', 'skip')}</div>` : ''}
     </div>
   </div>`;
 };
