@@ -8,6 +8,7 @@ let state = null,
   lobbyRequestPending = false,
   pendingChatMessages = [],
   chatFlushQueued = false,
+  chatFlushFrame = null,
   cupidChoices = [],
   timerInterval = null;
 const esc = (s) =>
@@ -131,6 +132,11 @@ function render() {
   const notesVal = document.querySelector('#private-notes textarea')?.value;
 
   pendingChatMessages.length = 0;
+  if (chatFlushFrame !== null) {
+    cancelAnimationFrame(chatFlushFrame);
+    chatFlushFrame = null;
+  }
+  chatFlushQueued = false;
   const own = state.own,
     isHost = state.hostId === socket.id;
   // Dead hunter MUST still see their action – they are NOT a spectator during hunter phase
@@ -944,7 +950,10 @@ socket.on('chat:message', (message) => {
   pendingChatMessages.push(message);
   if (!chatFlushQueued) {
     chatFlushQueued = true;
-    requestAnimationFrame(appendChatMessages);
+    chatFlushFrame = requestAnimationFrame(() => {
+      chatFlushFrame = null;
+      appendChatMessages();
+    });
   }
 });
 socket.on('lobby:state', (s) => {
