@@ -115,8 +115,4 @@ YuWolf/
 
 ## License
 
-MIT — feel free to use, modify and host your own version.
-
----
-
-*Made with ❤️ for Yu's DüsterWald*
+This project is intended for private and non-commercial event use.
